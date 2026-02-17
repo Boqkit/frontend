@@ -152,6 +152,9 @@
             <button onclick="app.openHistoryPage('booking'); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
                 <i class="fa-solid fa-ticket w-6"></i> My Tickets
             </button>
+            <button onclick="app.openLikesPage(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
+    <i class="fa-solid fa-heart w-6 text-red-500"></i> My Saved Events
+</button>
             <button onclick="app.openHistoryPage('view'); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
                 <i class="fa-solid fa-clock-rotate-left w-6"></i> History
             </button>
@@ -298,7 +301,7 @@
 </div>
 <script>
 // CONFIG - POINTING TO LOCALHOST BACKEND
-const API_URL = "http://10.95.121.223:5001/api";
+const API_URL = "http://192.168.1.30:5001/api";
 const elements = {
     root: document.getElementById('app-root'),
     search: document.getElementById('searchInput'),
@@ -332,6 +335,7 @@ class BoqkitApp {
             itemsPerPage: 20,
             isLoggedIn: false, // Login State
             user: null,
+            userLikes: [],
             pendingBookingUrl: null 
         };
         this.init();
@@ -368,6 +372,20 @@ class BoqkitApp {
         this.readStateFromURL();
         await this.fetchEvents();
     }
+    async fetchUserLikes() {
+    if (!this.state.isLoggedIn) return;
+    try {
+        const token = localStorage.getItem('boqkit_token');
+        const res = await fetch(`${API_URL}/user/my-likes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            this.state.userLikes = result.data.map(item => item.event_id);
+            this.render(); 
+        }
+    } catch (e) { console.error("Error fetching likes", e); }
+}
     initGoogleAuth() {
     window.addEventListener('load', () => {
         google.accounts.id.initialize({
@@ -1136,9 +1154,9 @@ handleSearch(e) {
 
         let filterSection = '';
         if (this.state.activeCategory === 'sports') {
-const sportsList = ["Football", "Cricket", "Motorsports", "Polo", "Tennis", "Rugby", "Basketball", "Cycling", "Netball", "Hockey", "Darts", "Snooker"];      
-     filterSection = this.renderSubFilter("Sports Events", sportsList, "fa-trophy");
-        } else if (this.state.activeCategory === 'today') {
+    const sportsList = ["Football", "Cricket", "Motorsports", "Polo", "Tennis", "Rugby", "Basketball", "Cycling", "Netball", "Hockey", "Darts", "Snooker"];      
+    filterSection = this.renderSubFilter("Sports Events", sportsList, "fa-trophy");
+} else if (this.state.activeCategory === 'today') {
             filterSection = this.renderSubFilter("Events Happening Today", ["Cinema", "Sports", "Music", "Theatre"], "fa-calendar-day", true);
         } else if (this.state.activeCategory === 'theatre') {
             const theatreCats = ['Musical', 'Comedy', 'Drama', 'Opera', 'Arts', 'Show'];
@@ -1176,19 +1194,26 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
         let gridContent = currentEvents.length ? currentEvents.map(event => {
     const userEmail = this.state.user ? this.state.user.email : '';
     const likes = JSON.parse(localStorage.getItem(`boqkit_likes_${userEmail}`) || '[]');
-    const isLiked = likes.some(l => String(l.id) === String(event.id));
-
+    
+    const isLiked = this.state.userLikes && this.state.userLikes.includes(event.id);
+    
     return `
     <div onclick="app.openDetail('${event.id}')" class="event-card bg-white rounded-2xl overflow-hidden shadow-sm cursor-pointer relative h-full flex flex-col">
         
-
         <div class="relative h-56 md:h-52 bg-slate-200 overflow-hidden shrink-0">
             <img src="${event.image}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
             
             <div class="absolute top-3 left-3 bg-amber-400 px-3 py-1 rounded-full text-[10px] font-bold text-slate-900 z-10 shadow-sm border border-white/20 uppercase">
                 ${event.category || 'Event'}
             </div>
-        </div>
+
+            <div class="absolute top-3 right-3 z-20">
+                <button onclick="app.handleLike(event, '${event.id}')" 
+                        class="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-md transition-all">
+                    <i class="fa-solid fa-heart ${isLiked ? 'text-red-500 scale-110' : 'text-slate-300'}"></i>
+                </button>
+            </div>
+            </div>
 
         <div class="p-4 flex flex-col flex-1">
             <div class="flex items-center gap-2 text-xs text-slate-500 mb-2">
@@ -1345,36 +1370,90 @@ const actionButton = `
         window.scrollTo(0,0);
 elements.root.innerHTML += contactSection;
     }
-    async handleLike(e, event) {
-    e.stopPropagation(); // Prevents opening the detail page when clicking the heart
+    async handleLike(e, eventId) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevents card click from triggering 
+    }
+    
     if (!this.state.isLoggedIn) {
-        this.showModal("Account Required", "Please log in to save events to your likes.", "info");
+        this.openAuthModal('login');
         return;
     }
+
     const token = localStorage.getItem('boqkit_token');
+    const heartIcon = e.currentTarget.querySelector('i');
+
     try {
         const res = await fetch(`${API_URL}/user/toggle-like`, {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
             },
             body: JSON.stringify({
-                event_id: event.id,
-                event_data: {
-                    title: event.title,
-                    image: event.image,
-                    date: event.date,
-                    venue: event.venue
-                }
+                event_id: eventId,
+                event_data: this.state.events.find(ev => ev.id === eventId) // Send ticket details 
             })
         });
+
         const result = await res.json();
-        if(result.status === 'success') {
-            // Refresh the list to show filled/empty heart
-            this.fetchEvents(elements.search.value, elements.location.value);
+
+        if (result.status === 'success') {
+            // Update UI without full reload 
+            if (result.action === 'liked') {
+                heartIcon.classList.replace('text-slate-300', 'text-red-500');
+                heartIcon.classList.add('scale-110');
+                if(!this.state.userLikes.includes(eventId)) this.state.userLikes.push(eventId);
+            } else {
+                heartIcon.classList.replace('text-red-500', 'text-slate-300');
+                heartIcon.classList.remove('scale-110');
+                this.state.userLikes = this.state.userLikes.filter(id => id !== eventId);
+            }
+            
+            // Refresh saved events page if currently viewing it
+            if (this.state.screen === 'likes') {
+                this.openLikesPage();
+            }
         }
-    } catch (err) { console.error("Like failed", err); }
+    } catch (err) {
+        console.error("Like error", err);
+    }
+}
+
+// 2. Open Saved Events Page
+async openLikesPage() {
+    document.getElementById('modalTitle').innerText = "My Saved Events";
+    document.getElementById('modalMessage').innerHTML = `<div class="spinner mx-auto"></div>`;
+    this.openModalUI();
+
+    const token = localStorage.getItem('boqkit_token');
+    const res = await fetch(`${API_URL}/user/my-likes`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const result = await res.json();
+    this.state.screen = 'likes';
+
+    if (result.data && result.data.length > 0) {
+        let html = `<div class="grid grid-cols-1 gap-4 p-2">`;
+        result.data.forEach(item => {
+            html += `
+                <div class="flex gap-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm items-center">
+                    <img src="${item.image}" class="w-16 h-16 rounded-lg object-cover">
+                    <div class="flex-1 text-left">
+                        <h4 class="font-bold text-sm">${item.title}</h4>
+                        <p class="text-xs text-slate-500">${item.date}</p>
+                    </div>
+                    <button onclick="app.handleLike(event, '${item.event_id}')" class="text-red-500 p-2">
+                        <i class="fa-solid fa-heart-crack"></i>
+                    </button>
+                </div>`;
+        });
+        html += `</div>`;
+        document.getElementById('modalMessage').innerHTML = html;
+    } else {
+        document.getElementById('modalMessage').innerHTML = "<p class='py-10'>No saved events yet.</p>";
+    }
 }
     showModal(title, message, type = "info") {
     // Title update
