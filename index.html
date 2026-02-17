@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>boqkit - UK Events & Sports</title>
+<link rel="preconnect" href="https://cdn.tailwindcss.com">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+    /* Performance & Animations */
+    .hardware-accel { transform: translateZ(0); will-change: transform; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    .animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
+    /* Scrollbar */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
+    /* Loading Spinner */
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #065f46; border-radius: 50%; width: 40px; height: 40px; animation: spin 0.8s linear infinite; will-change: transform; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    /* Cards */
+    .event-card { transition: transform 0.2s ease, box-shadow 0.2s ease; content-visibility: auto; contain-intrinsic-size: 1px 350px; }
+    .event-card:hover { transform: translateY(-6px); box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.1); z-index: 10; }
+    .img-optimized { image-rendering: -webkit-optimize-contrast; }
+/* Mobile View Check */
+@media (min-width: 768px) {
+    .mobile-nav {
+        display: none !important;
+    }
+}
+@media (max-width: 767px) {
+    body {
+        padding-bottom: 70px;
+    }
+    .mobile-nav button:focus {
+        color: #065f46; 
+    }
+    .nav-hidden {
+    display: none !important;
+}
+}
+.no-scroll {
+    overflow: hidden;
+    height: 100vh;
+}
+#sideMenu > div:last-child {
+    transform: translateX(-100%);
+}
+#sideMenu:not(.hidden) > div:last-child {
+    transform: translateX(0);
+}
+</style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
+<nav class="sticky top-0 z-50 bg-emerald-900 text-white shadow-lg px-4 py-3 hardware-accel">
+    <div class="max-w-7xl mx-auto flex flex-col gap-3">
+        
+        <div class="flex items-center justify-between w-full">
+            
+            <button onclick="app.toggleSidebar()" class="text-white text-2xl p-1 hover:text-amber-400 transition-colors order-first">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
+            <button onclick="app.goHome(true)" class="flex items-center gap-2 text-xl font-bold hover:text-amber-400 mx-auto">
+                <i class="fa-solid fa-ticket text-amber-400"></i>
+                <span>boqkit</span>
+            </button>
+
+            <div id="navAuthSection" class="flex items-center min-w-[40px] justify-end">
+                </div>
+        </div>
+
+        <div class="w-full max-w-xl mx-auto">
+            <div class="flex items-center bg-white rounded-full p-1 gap-1 w-full shadow-inner border border-slate-200">
+                <div class="flex-1 flex items-center px-2 min-w-0">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs"></i>
+                    <input type="text" id="searchInput" placeholder="Events..." 
+                           class="w-full pl-2 py-1 text-slate-800 outline-none text-xs bg-transparent min-w-0">
+                </div>
+                
+                <div class="flex items-center px-2 border-l border-slate-200 shrink-0">
+                    <i class="fa-solid fa-location-dot text-emerald-600 text-xs"></i>
+                    <input type="text" id="locationInput" placeholder="City" 
+                           class="w-16 md:w-32 pl-1 py-1 text-slate-800 outline-none text-xs bg-transparent">
+                    <button onclick="app.locateMe()" class="ml-1 text-slate-400">
+                        <i class="fa-solid fa-crosshairs text-xs"></i>
+                    </button>
+                </div>
+                <div class="flex items-center px-2 border-l border-slate-200 shrink-0">
+    <i class="fa-solid fa-calendar-days text-emerald-600 text-[10px] mr-1"></i>
+    <div class="flex flex-col">
+        <label class="text-[7px] font-bold text-slate-400 uppercase">Up To Date</label>
+        <input type="date" id="toDateInput" 
+       class="text-[10px] text-slate-800 outline-none bg-transparent cursor-pointer">
+    </div>
+</div>
+
+                <button onclick="app.triggerSearch()" class="bg-emerald-800 text-white px-3 py-1.5 rounded-full shrink-0">
+                    <i class="fa-solid fa-search text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+<main id="app-root" class="max-w-7xl mx-auto p-4 md:p-6 min-h-[80vh]">
+</main>
+<nav class="mobile-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2.5 flex justify-around items-center z-[130] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] hardware-accel">
+    <button onclick="app.goHome(true)" class="flex flex-col items-center gap-1 w-1/4 text-emerald-900 transition-transform active:scale-90">
+        <i class="fa-solid fa-house text-xl"></i>
+        <span class="text-[10px] font-bold">Home</span>
+    </button>
+   <button onclick="app.fetchUserActivity('tickets')" class="flex flex-col items-center gap-1 w-1/4 text-slate-500 transition-transform active:scale-90">
+    <i class="fa-solid fa-ticket text-xl"></i>
+    <span class="text-[10px] font-bold">Tickets</span>
+</button>
+<button onclick="app.openHistoryPage()" class="flex flex-col items-center gap-1 w-1/4 text-slate-500 transition-transform active:scale-90">
+    <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+    <span class="text-[10px] font-bold">History</span>
+</button>
+    <button onclick="app.showAccountInfo()" class="flex flex-col items-center gap-1 w-1/4 text-slate-500 transition-transform active:scale-90">
+        <i class="fa-solid fa-circle-user text-xl"></i>
+        <span class="text-[10px] font-bold">Account</span>
+    </button>
+</nav>
+<div id="sideMenu" class="fixed inset-0 z-[150] hidden">
+    <div onclick="app.toggleSidebar()" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    
+    
+<div class="absolute top-0 left-0 w-72 h-full bg-white shadow-2xl transition-transform duration-300 hardware-accel p-6 flex flex-col">        <div class="flex justify-between items-center mb-8 border-b pb-4">
+            <h2 class="text-xl font-bold text-emerald-900 flex items-center gap-2">
+                <i class="fa-solid fa-circle-user"></i> Menu
+            </h2>
+            <button onclick="app.toggleSidebar()" class="text-white text-2xl md:text-3xl hover:text-amber-400 transition-colors">
+    <i class="fa-solid fa-bars"></i>
+</button>
+        </div>
+
+        <nav class="flex flex-col gap-4">
+            <button onclick="app.goHome(true); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
+                <i class="fa-solid fa-house w-6"></i> Home
+            </button>
+            <button onclick="app.openSellTicketPage(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
+    <i class="fa-solid fa-tags w-6 text-emerald-600"></i> Sell Tickets
+</button>
+            <button onclick="app.openHistoryPage('booking'); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
+                <i class="fa-solid fa-ticket w-6"></i> My Tickets
+            </button>
+            <button onclick="app.openHistoryPage('view'); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
+                <i class="fa-solid fa-clock-rotate-left w-6"></i> History
+            </button>
+            <button onclick="app.openUserSalesStatus(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
+    <i class="fa-solid fa-clipboard-list w-6 text-blue-600"></i> Sell Ticket Status
+</button>
+            <button onclick="app.showAccountInfo(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
+                <i class="fa-solid fa-user-gear w-6"></i> Account
+            </button>
+            <hr class="my-2">
+            <button onclick="app.logout(); app.toggleSidebar()" class="flex items-center gap-3 p-3 text-red-600 hover:bg-red-50 rounded-xl font-bold">
+                <i class="fa-solid fa-right-from-bracket w-6"></i> Logout
+            </button>
+        </nav>
+    </div>
+</div>
+<div id="modal" class="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 hidden opacity-0 transition-opacity duration-300">
+
+<div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 text-center transform scale-95 transition-transform duration-300 hardware-accel relative">        
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <button onclick="app.closeModal()" class="absolute top-4 left-4 text-emerald-900 hover:text-emerald-700 transition-colors flex items-center gap-1 font-bold text-sm">
+            <i class="fa-solid fa-arrow-left"></i> Back
+        </button>
+            <i id="modalIcon" class="fa-solid fa-info-circle text-xl"></i>
+        </div>
+        <h3 id="modalTitle" class="text-xl font-bold mb-2">Notice</h3>
+        <p id="modalMessage" class="text-slate-600 mb-6">Message</p>
+        
+        
+    </div>
+</div>
+<div id="authModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden transform scale-95 transition-transform duration-300 hardware-accel relative">
+        <button onclick="app.closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        <div class="p-8">
+            <div class="text-center mb-6">
+                
+                <h2 id="authTitle" class="text-2xl font-bold text-emerald-900">Welcome Back</h2>
+                <p id="authSubtitle" class="text-slate-500 text-sm">Please enter your details</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-4" onsubmit="app.handleLoginSubmit(event)">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">Email Address</label>
+                    <input type="email" id="loginEmail" required placeholder="you@example.com" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm">
+                </div>
+               <div class="relative">
+    <input type="password" id="loginPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:border-blue-500 transition-all text-sm">
+    <button type="button" onclick="app.togglePasswordVisibility('loginPass', this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">
+        <i class="fa-solid fa-eye" id="eyeIcon"></i>
+    </button>
+</div>
+                <button type="submit" id="loginBtn" class="w-full bg-emerald-900 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-800 transition-all">
+        Log In
+    </button>
+
+    <div class="text-center mt-4">
+        <p class="text-slate-500 text-xs font-medium">
+            Not on boqkit yet? 
+            <button type="button" onclick="app.switchAuthMode('signup')" class="text-emerald-900 font-bold hover:underline">
+                Sign Up
+            </button>
+        </p>
+    </div>
+                <div class="relative flex py-6 items-center">
+    <div class="flex-grow border-t border-slate-200"></div>
+    <span class="flex-shrink mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-wider">Or</span>
+    <div class="flex-grow border-t border-slate-200"></div>
+</div>
+<div id="googleBtnContainer" class="flex justify-center w-full min-h-[40px]"></div>
+            </form>
+            <div class="text-right mt-2">
+    <button type="button" onclick="app.showForgotPasswordUI()" class="text-[10px] text-emerald-900 font-bold hover:underline">
+        Forgot Password?
+    </button>
+</div>
+            <form id="signupForm" class="space-y-4 hidden" onsubmit="app.handleSignupSubmit(event)">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">Full Name</label>
+                    <input type="text" id="sname" required placeholder="John Doe" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">City</label>
+                        <input type="text" id="scity" required placeholder="London" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">Email</label>
+                        <input type="email" id="semail" required placeholder="name@mail.com" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">Mobile Number</label>
+                    <div class="flex gap-2">
+                        <select id="scountry" class="w-24 px-2 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 outline-none text-sm font-medium">
+                            <option value="+44">🇬🇧 +44</option>
+                            <option value="+91">🇮🇳 +91</option>
+                            <option value="+1">🇺🇸 +1</option>
+                            <option value="+971">🇦🇪 +971</option>
+                            <option value="+61">🇦🇺 +61</option>
+                            <option value="+1">🇨🇦 +1</option>
+                            <option value="+49">🇩🇪 +49</option>
+                        </select>
+                        <input type="tel" id="smobile" required placeholder="1234567890" pattern="[0-9]*" class="flex-1 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">Password</label>
+                        <input type="password" id="spass" required placeholder="••••••" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">Confirm</label>
+                        <input type="password" id="scpass" required placeholder="••••••" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-emerald-500 outline-none transition-all text-sm">
+                    </div>
+                </div>
+                <form id="signupForm" class="space-y-4 hidden" onsubmit="app.handleSignupSubmit(event)">
+    <button type="submit" id="signupBtn" class="w-full bg-emerald-900 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-800 shadow-lg transition-all transform active:scale-95">
+        Create Account
+    </button>
+
+    <div class="relative flex py-4 items-center">
+        <div class="flex-grow border-t border-slate-200"></div>
+        <span class="flex-shrink mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-wider">Or</span>
+        <div class="flex-grow border-t border-slate-200"></div>
+    </div>
+    
+    <div id="googleBtnContainerSignup" class="flex justify-center w-full min-h-[40px]"></div>
+
+    <div class="text-center mt-4">
+        <p class="text-slate-500 text-[11px] font-medium">
+            Already on boqkit? 
+            <button type="button" onclick="app.switchAuthMode('login')" class="text-emerald-900 font-bold hover:underline">
+                Log In
+            </button>
+        </p>
+    </div>
+</form>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+// CONFIG - POINTING TO LOCALHOST BACKEND
+const API_URL = "http://10.95.121.223:5001/api";
+const elements = {
+    root: document.getElementById('app-root'),
+    search: document.getElementById('searchInput'),
+    location: document.getElementById('locationInput'),
+    modal: document.getElementById('modal'),
+    modalTitle: document.getElementById('modalTitle'),
+    modalMessage: document.getElementById('modalMessage'),
+    modalIcon: document.getElementById('modalIcon'),
+    // Auth Elements
+    authModal: document.getElementById('authModal'),
+    loginForm: document.getElementById('loginForm'),
+    signupForm: document.getElementById('signupForm'),
+    tabLogin: document.getElementById('tabLogin'),
+    tabSignup: document.getElementById('tabSignup'),
+    authTitle: document.getElementById('authTitle'),
+    authSubtitle: document.getElementById('authSubtitle'),
+    navAuthSection: document.getElementById('navAuthSection')
+};
+class BoqkitApp {
+    constructor() {
+        this.state = {
+            screen: 'home',
+            events: [],
+            loading: true,
+            selectedEvent: null,
+            activeCategory: '', 
+            activeSubCategory: '', 
+            searchQuery: '',
+            locationQuery: '',
+            currentPage: 1,
+            itemsPerPage: 20,
+            isLoggedIn: false, // Login State
+            user: null,
+            pendingBookingUrl: null 
+        };
+        this.init();
+        this.initGoogleAuth();
+        setInterval(() => this.checkUserStatus(), 5000);
+    }
+    async init() {
+        const params = new URLSearchParams(window.location.search);
+    const resetToken = params.get('token');
+    if (resetToken) {
+        this.showResetPasswordUI(resetToken);
+        return;
+    }
+
+        const token = localStorage.getItem('boqkit_token');
+        const userData = localStorage.getItem('boqkit_user');
+        const toDateInput = document.getElementById('toDateInput');
+        
+        if (toDateInput) {
+            toDateInput.min = new Date().toISOString().split('T')[0];
+        }
+
+        if (token && userData) {
+            this.state.isLoggedIn = true;
+            this.state.user = JSON.parse(userData);
+            this.updateNavAuth();
+        }
+
+        // 3. Browser Back Button Listener
+        window.addEventListener('popstate', (event) => {
+            this.handlePopState(event);
+        });
+
+        this.readStateFromURL();
+        await this.fetchEvents();
+    }
+    initGoogleAuth() {
+    window.addEventListener('load', () => {
+        google.accounts.id.initialize({
+            client_id: "296471228910-abogc2a54tg4ro80klbiko78ql5o2shi.apps.googleusercontent.com", 
+            callback: this.handleGoogleResponse.bind(this)
+        });
+
+        // Login Page-ukkana Button
+        google.accounts.id.renderButton(
+            document.getElementById("googleBtnContainer"),
+            { theme: "outline", size: "large", width: "350", shape: "pill", text: "signin_with" } 
+        );
+
+        // Sign Up Page-ukkana Button (Idhai add pannunga)
+        google.accounts.id.renderButton(
+            document.getElementById("googleBtnContainerSignup"),
+            { theme: "outline", size: "large", width: "350", shape: "pill", text: "signup_with" } 
+        );
+    });
+}
+
+async handleGoogleResponse(response) {
+    try {
+        const res = await fetch(`${API_URL}/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: response.credential })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            this.state.isLoggedIn = true;
+            this.state.user = data.user;
+            localStorage.setItem('boqkit_token', data.token);
+            localStorage.setItem('boqkit_user', JSON.stringify(data.user));
+            this.updateNavAuth();
+            this.showModal("Success", "Logged in with Google!", "success");
+            this.closeAuthModal();
+        } else {
+            this.showModal("Auth Failed", data.message, "error");
+        }
+    } catch (error) {
+        this.showModal("Error", "Could not connect to server", "error");
+    }
+}
+    // Handle Back Button
+    handlePopState(event) {
+        if (event.state) {
+            this.state.screen = event.state.screen || 'home';
+            this.state.activeCategory = event.state.category || '';
+            this.state.activeSubCategory = event.state.subCategory || '';
+            this.state.selectedEvent = event.state.selectedEvent || null;
+            if (this.state.screen === 'home') {
+                this.render();
+                if (this.state.events.length === 0) this.fetchEvents();
+            } else if (this.state.screen === 'detail') {
+                this.render();
+            }
+        } else {
+            this.goHome(false);
+        }
+    }
+    readStateFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        this.state.activeCategory = params.get('category') || '';
+        this.state.activeSubCategory = params.get('sub') || '';
+    }
+    updateHistory(replace = false) {
+        const urlParams = new URLSearchParams();
+        if (this.state.activeCategory) urlParams.set('category', this.state.activeCategory);
+        if (this.state.activeSubCategory) urlParams.set('sub', this.state.activeSubCategory);
+        if (this.state.screen === 'detail' && this.state.selectedEvent) {
+            urlParams.set('event', this.state.selectedEvent.id);
+        }
+        const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+        const stateData = {
+            screen: this.state.screen,
+            category: this.state.activeCategory,
+            subCategory: this.state.activeSubCategory,
+            selectedEvent: this.state.selectedEvent
+        };
+        if (replace) history.replaceState(stateData, '', newUrl);
+        else history.pushState(stateData, '', newUrl);
+    }
+    // =====================================================
+    // AUTHENTICATION LOGIC (REAL API CALLS)
+    // =====================================================
+    updateNavAuth() {
+    const section = document.getElementById('navAuthSection');
+    if (this.state.isLoggedIn && this.state.user) {
+        // Logged In state (Hi, Name maari irukkum)
+        section.innerHTML = `
+            <div class="flex items-center gap-2 cursor-pointer" onclick="app.showAccountInfo()">
+                <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold border border-emerald-400">
+                    <i class="fa-solid fa-user text-sm"></i>
+                </div>
+                <span class="text-xs font-bold text-slate-200 hidden sm:block">Hi, ${this.state.user.fullname.split(' ')[0]}</span>
+            </div>
+        `;
+    } else {
+        section.innerHTML = `
+             <button onclick="app.openAuthModal('login')" class="text-sm font-bold text-white hover:text-amber-400 transition-colors">
+                Log In
+             </button>
+        `;
+    }
+}
+
+    openAuthModal(mode = 'login') {
+        this.switchAuthMode(mode);
+        elements.authModal.classList.remove('hidden');
+        document.body.classList.add('no-scroll');
+        requestAnimationFrame(() => {
+            elements.authModal.classList.remove('opacity-0');
+            elements.authModal.querySelector('div').classList.remove('scale-95');
+            elements.authModal.querySelector('div').classList.add('scale-100');
+        });
+    }
+    closeAuthModal() {
+        elements.authModal.classList.add('opacity-0');
+        elements.authModal.querySelector('div').classList.remove('scale-100');
+        elements.authModal.querySelector('div').classList.add('scale-95');
+        document.body.classList.remove('no-scroll');
+        setTimeout(() => elements.authModal.classList.add('hidden'), 300);
+        this.state.pendingBookingUrl = null; 
+    }
+    switchAuthMode(mode) {
+    if (mode === 'login') {
+        elements.loginForm.classList.remove('hidden');
+        elements.signupForm.classList.add('hidden');
+        elements.authTitle.innerText = "Log in Boqkit"; // Pinterest Style Title
+        elements.authSubtitle.innerText = ""; 
+    } else {
+        elements.loginForm.classList.add('hidden');
+        elements.signupForm.classList.remove('hidden');
+        elements.authTitle.innerText = "Create Account";
+        elements.authSubtitle.innerText = "Join boqkit today";
+    }
+}
+    async handleLoginSubmit(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPass').value;
+        const btn = document.getElementById('loginBtn');
+        btn.innerHTML = '<div class="spinner border-white border-t-transparent w-5 h-5"></div>';
+        btn.disabled = true;
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                this.state.isLoggedIn = true;
+                this.state.user = data.user;
+                localStorage.setItem('boqkit_token', data.token);
+                localStorage.setItem('boqkit_user', JSON.stringify(data.user));
+                this.updateNavAuth();
+                this.showModal("Success", "Logged in successfully!", "success");
+                this.closeAuthModal();
+                if (this.state.pendingBookingUrl) {
+                    window.open(this.state.pendingBookingUrl, '_blank');
+                    this.state.pendingBookingUrl = null;
+                }
+            } else {
+                this.showModal("Login Failed", data.message, "error");
+            }
+        } catch (error) {
+            this.showModal("Error", "Could not connect to server", "error");
+        } finally {
+            btn.innerHTML = 'Log In';
+            btn.disabled = false;
+        }
+    }
+    async handleSignupSubmit(e) {
+        e.preventDefault();
+        const fullname = document.getElementById('sname').value;
+        const city = document.getElementById('scity').value;
+        const email = document.getElementById('semail').value;
+        const countryCode = document.getElementById('scountry').value;
+        const mobile = document.getElementById('smobile').value;
+        const password = document.getElementById('spass').value;
+        const confirm = document.getElementById('scpass').value;
+        const btn = document.getElementById('signupBtn');
+        if (password !== confirm) {
+            this.showModal("Error", "Passwords do not match!", "error");
+            return;
+        }
+        btn.innerHTML = '<div class="spinner border-white border-t-transparent w-5 h-5"></div>';
+        btn.disabled = true;
+        try {
+            const response = await fetch(`${API_URL}/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    fullname, city, email, 
+                    country_code: countryCode, 
+                    mobile, password 
+                })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Auto login after signup
+                this.state.isLoggedIn = true;
+                const newUser = { fullname, email,mobile,city };
+                this.state.user = newUser;
+                localStorage.setItem('boqkit_token', data.token);
+                localStorage.setItem('boqkit_user', JSON.stringify(newUser));
+                this.updateNavAuth();
+                this.showModal("Welcome", "Account created successfully!", "success");
+                this.closeAuthModal();
+                 if (this.state.pendingBookingUrl) {
+                    window.open(this.state.pendingBookingUrl, '_blank');
+                    this.state.pendingBookingUrl = null;
+                }
+            } else {
+                this.showModal("Signup Failed", data.message, "error");
+            }
+        } catch (error) {
+            this.showModal("Error", "Could not connect to server", "error");
+        } finally {
+            btn.innerHTML = 'Create Account';
+            btn.disabled = false;
+        }
+    }
+    logout() {
+        this.state.isLoggedIn = false;
+        this.state.user = null;
+        localStorage.removeItem('boqkit_token');
+        localStorage.removeItem('boqkit_user');
+        this.updateNavAuth();
+        this.showModal("Logged Out", "See you soon!", "info");
+    }
+    togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+    // Handles the "Book Now" click
+    async handleBooking(url) {
+    const event = this.state.selectedEvent;
+    
+    try {
+        fetch(`${API_URL}/track-click`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event_id: event.id,
+                event_title: event.title,
+                user_email: this.state.user ? this.state.user.email : 'Guest'
+            })
+        });
+    } catch (e) { console.error("Tracking failed"); }
+
+    if (this.state.isLoggedIn) {
+        window.open(url, '_blank');
+    } else {
+        this.state.pendingBookingUrl = url;
+        this.openAuthModal('login');
+    }
+}
+    // =====================================================
+    // GROUPING LOGIC
+    // =====================================================
+    groupCinemaEvents(events) {
+        if (!events.length) return [];
+        const grouped = [];
+        const map = new Map();
+        for (const event of events) {
+            if (event.type !== 'cinema' && event.type !== 'theatre' && event.type !== 'tamil') { grouped.push(event); continue; }
+            const key = (event.title + event.venue + event.city).toLowerCase();
+            if (map.has(key)) {
+                const parent = map.get(key);
+                parent.all_showtimes.push({ id: event.id, date: event.date, time: event.time, booking_url: event.booking_url });
+                parent.has_multiple_dates = true;
+            } else {
+                const parentEvent = { ...event }; 
+                parentEvent.all_showtimes = [{ id: event.id, date: event.date, time: event.time, booking_url: event.booking_url }];
+                parentEvent.has_multiple_dates = false;
+                map.set(key, parentEvent);
+                grouped.push(parentEvent);
+            }
+        }
+        return grouped;
+    }
+// Open History Page with Tabs
+// Open History Page with Security Logic
+openHistoryPage() {
+    // 1. Check if the user is currently logged in
+    const token = localStorage.getItem('boqkit_token');
+    if (!this.state.isLoggedIn || !token) {
+        this.showModal("Access Denied", "Please log in to view your booking history.", "info");
+        setTimeout(() => {
+            this.closeModal();
+            this.openAuthModal('login');
+        }, 1500);
+        return;
+    }
+    // 2. Display the UI only if the user is authenticated
+    const title = "Activity & History";
+    const html = `
+        <div class="flex p-1 bg-slate-100 rounded-xl mb-6">
+            <button onclick="app.renderHistoryTabs('view')" id="tabView" class="flex-1 py-2 text-xs font-bold rounded-lg shadow-sm bg-white text-emerald-900 transition-all">View History</button>
+            <button onclick="app.renderHistoryTabs('booking')" id="tabBooking" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-emerald-900 transition-all">Booking History</button>
+        </div>
+        <div id="historyContent" class="space-y-3 max-h-[50vh] overflow-y-auto p-1 custom-scrollbar">
+            </div>
+    `;
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalMessage').innerHTML = html;
+    const modal = document.getElementById('modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    // Show Local History by default
+    this.renderHistoryTabs('view');
+}
+async renderHistoryTabs(tab) {
+    const contentArea = document.getElementById('historyContent');
+    const tabView = document.getElementById('tabView');
+    const tabBooking = document.getElementById('tabBooking');
+    if (tab === 'view') {
+        // Tab UI updates
+        tabView.className = "flex-1 py-2 text-xs font-bold rounded-lg shadow-sm bg-white text-emerald-900 transition-all";
+        tabBooking.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-emerald-900 transition-all";
+        // History stored in the browser (Local Storage)
+        const viewData = JSON.parse(localStorage.getItem('boqkit_view_history') || '[]');
+        this.displayHistoryItems(contentArea, viewData, "No recently viewed events.");
+    } else {
+        // Booking Tab UI updates
+        tabView.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-emerald-900 transition-all";
+        tabBooking.className = "flex-1 py-2 text-xs font-bold rounded-lg shadow-sm bg-white text-emerald-900 transition-all";
+        contentArea.innerHTML = `<div class="flex justify-center py-8"><div class="spinner w-8 h-8"></div></div>`;
+        try {
+            const token = localStorage.getItem('boqkit_token');
+            // Sending the Token to the Backend. This is critical!
+            const res = await fetch(`${API_URL}/user/bookings`, {
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                const bookings = [...(result.tickets || []), ...(result.history || [])];
+                this.displayHistoryItems(contentArea, bookings, "You haven't booked any tickets yet.");
+            } else {
+                contentArea.innerHTML = `<p class="text-center text-xs text-red-500 py-8">${result.message}</p>`;
+            }
+        } catch (e) {
+            contentArea.innerHTML = `<p class="text-center text-xs text-red-500 py-8">Failed to connect to server.</p>`;
+        }
+    }
+}
+displayHistoryItems(container, items, emptyMsg) {
+    if (!items || items.length === 0) {
+        container.innerHTML = `<p class="text-center text-sm text-slate-400 py-10">${emptyMsg}</p>`;
+        return;
+    }
+    else {
+    // Tickets / Booking Tab logic
+    tabView.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-emerald-900 transition-all";
+    tabBooking.className = "flex-1 py-2 text-xs font-bold rounded-lg shadow-sm bg-white text-emerald-900 transition-all";
+    
+    const userEmail = this.state.user.email;
+    const likes = JSON.parse(localStorage.getItem(`boqkit_likes_${userEmail}`) || '[]');
+    
+    // Display the liked items in the modal
+    this.displayHistoryItems(contentArea, likes, "You haven't liked any tickets yet.");
+}
+    container.innerHTML = items.map(item => `
+        <div onclick="app.closeModal(); app.openDetail('${item.id}')" class="flex gap-4 p-3 bg-white rounded-xl border border-slate-100 text-left hover:border-emerald-500 transition-all cursor-pointer shadow-sm mb-2">
+            <img src="${item.image}" class="w-12 h-12 rounded-lg object-cover bg-slate-50" onerror="this.src='https://placehold.co/100'">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-[11px] text-slate-800 truncate">${item.title}</h4>
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-[10px] font-bold text-emerald-700">${item.date}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+renderActivityList(type, items) {
+    const title = type === 'tickets' ? "My Tickets" : "History";
+    if (!items || items.length === 0) {
+        this.showModal(title, `No ${type} found.`, "info");
+        return;
+    }
+    let html = `<div class="space-y-4 max-h-[60vh] overflow-y-auto p-2">`;
+    items.forEach(item => {
+        html += `
+            <div class="flex gap-4 p-4 bg-white rounded-xl border border-slate-200 text-left shadow-sm">
+                <img src="${item.image}" class="w-16 h-16 rounded-lg object-cover" onerror="this.src='https://placehold.co/100'">
+                <div class="flex-1">
+                    <h4 class="font-bold text-sm text-slate-800">${item.title}</h4>
+                    <p class="text-xs text-slate-500">${item.venue || ''}</p>
+                    <p class="text-xs font-bold text-emerald-700 mt-2">${item.date}</p>
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalMessage').innerHTML = html;
+    const modal = document.getElementById('modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+    async fetchEvents(keyword = '', city = '') {
+    this.state.loading = true;
+    this.render(); 
+    try {
+        const url = new URL(`${API_URL}/search`);
+        if (keyword) url.searchParams.append('q', keyword);
+        if (city) url.searchParams.append('city', city);
+
+        if (this.state.activeCategory === 'sports' && this.state.activeSubCategory) {
+    url.searchParams.append('q', this.state.activeSubCategory); 
+}
+
+        const toDateInput = document.getElementById('toDateInput');
+        if (toDateInput && toDateInput.value) {
+            url.searchParams.append('to_date', toDateInput.value);
+        }
+        
+        // 1. Handling Category Parameters
+        let catParam = this.state.activeCategory;
+        const lowerKeyword = keyword.toLowerCase();
+        
+        // ✅ HOME PAGE SEARCH DETECTION LOGIC:
+        const isIndianSearch = lowerKeyword.includes('indian');
+
+        if (this.state.activeCategory === 'movies' && this.state.activeSubCategory.toLowerCase() === 'indian movies') {
+    catParam = 'indian'; 
+} 
+else if (lowerKeyword.includes('indian') || lowerKeyword.includes('tamil')) {
+    catParam = 'indian'; 
+}
+        else if (catParam && catParam !== 'today' && catParam !== 'hot') {
+            if (catParam === 'movies') catParam = 'cinema';
+        }
+        
+        if (catParam) {
+            url.searchParams.append('category', catParam);
+        }
+
+        const response = await fetch(url.toString());
+        if (!response.ok) throw new Error(`Server Error: ${response.status}`);
+        const result = await response.json();
+        
+        let events = result.data || [];
+
+        // 2. CHECK IF DATA EXISTS
+        if (events.length === 0) {
+            this.state.events = [];
+        } else {
+            // 3. KEYWORD FILTERING (Strict Search Logic)
+            if (keyword) {
+                const searchKey = lowerKeyword;
+                events = events.filter(e => {
+                    return (e.title || '').toLowerCase().includes(searchKey) || 
+                           (e.category || '').toLowerCase().includes(searchKey) ||
+                           (e.type || '').toLowerCase().includes(searchKey) ||
+                           (e.sport_type || '').toLowerCase().includes(searchKey);
+                });
+            }
+
+            // 4. CATEGORY & SUBCATEGORY FILTERING (Unga existing logic)
+            if (this.state.activeCategory) {
+                const active = this.state.activeCategory;
+                const subActive = (this.state.activeSubCategory || '').toLowerCase(); 
+                const todayStr = new Date().toDateString();
+
+                events = events.filter(e => {
+                    const type = (e.type || '').toLowerCase();
+                    const cat = (e.category || '').toLowerCase();
+                    const title = (e.title || '').toLowerCase();
+                    const sportType = (e.sport_type || '').toLowerCase();
+
+                    // Today Filter
+                    if (active === 'today') {
+                        if (new Date(e.date).toDateString() !== todayStr) return false;
+                        if (subActive) {
+                            if (subActive === 'cinema') return type === 'cinema';
+                            if (subActive === 'music') return type === 'music' || cat.includes('concert');
+                            if (subActive === 'sports') return type === 'sports' || cat.includes('sport');
+                            if (subActive === 'theatre') return type === 'theatre' || cat.includes('arts');
+                            return false; 
+                        }
+                        return true;
+                    }
+
+                    // Hot Filter
+                    if (active === 'hot') return e.is_hot;
+
+                    // Sports Filter
+                    if (active === 'sports') {
+                        const isSports = type === 'sports' || cat.includes('football') || cat.includes('sport') || cat.includes('league');
+                        if (!isSports) return false;
+                        if (subActive) {
+                            if (sportType.includes(subActive)) return true;
+                            if (cat.includes(subActive)) return true;
+                            if (title.includes(subActive)) return true;
+                            if (subActive === 'football' && (cat.includes('premier') || title.includes('league') || title.includes('cup'))) return true;
+                            if (subActive === 'formula 1') return title.includes('grand prix');
+                            if (subActive === 'rugby') return title.includes('six nations') || title.includes('union');
+                            if (subActive === 'horse racing') return title.includes('grand national') || title.includes('ascot');
+                            if (subActive === 'cricket') return title.includes('ashes') || title.includes('test') || title.includes('t20');
+                            if (subActive === 'tennis') return title.includes('wimbledon') || title.includes('open');
+                            if (subActive === 'golf') return title.includes('open') || title.includes('master');
+                            if (subActive === 'darts') return title.includes('darts');
+                            if (subActive === 'snooker') return title.includes('snooker');
+                            return false; 
+                        }
+                        return true;
+                    }
+
+                    // Music Filter
+                    if (active === 'music') {
+                        const isMusic = type === 'music' || cat.includes('concert') || cat.includes('gig');
+                        if (!isMusic) return false;
+                        if (subActive) return cat.includes(subActive) || title.includes(subActive) || type.includes(subActive);
+                        return true;
+                    }
+
+                    // Theatre Filter
+                    if (active === 'theatre') {
+                        const isTheatre = type === 'theatre' || cat.includes('theatre') || cat.includes('arts');
+                        if (!isTheatre) return false;
+                        if (subActive) return cat.includes(subActive) || title.includes(subActive) || type.includes(subActive);
+                        return true;
+                    }
+
+                    // Movies Filter
+                    if (active === 'movies') {
+                        if (subActive === 'indian hits') return true; 
+                        if (type !== 'cinema' && type !== 'indian') return false;
+                        if (subActive && subActive !== 'tamil hits') return cat.includes(subActive) || title.includes(subActive);
+                        return true;
+                    }
+                    return true;
+                });
+            }
+            this.state.events = this.groupCinemaEvents(events);
+        }
+        this.state.currentPage = 1;
+    } catch (error) { 
+        console.error("API Error:", error); 
+        this.state.events = [];
+    } finally { 
+        this.state.loading = false; 
+        this.render(); 
+    }
+}
+    triggerSearch() {
+        const keyword = elements.search.value;
+        const city = elements.location.value;
+        const toDateInput = document.getElementById('toDateInput');
+        const toDate = toDateInput ? toDateInput.value : '';
+        this.state.searchQuery = keyword;
+        this.state.locationQuery = city;
+        this.state.activeCategory = '';
+        this.state.activeSubCategory = '';
+        this.updateHistory(); 
+        this.fetchEvents(keyword, city);
+    }
+    searchByLocation(city) {
+        if (!city) return;
+        elements.location.value = city;
+        elements.search.value = '';
+        this.state.locationQuery = city;
+        this.state.searchQuery = '';
+        this.state.activeCategory = '';
+        this.state.activeSubCategory = '';
+        this.state.screen = 'home';
+        this.updateHistory(); 
+        this.fetchEvents('', city);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    // ✅ UPDATED LOCATE ME (High Accuracy)
+    locateMe() {
+        if (!navigator.geolocation) {
+            this.showModal("Error", "Geolocation is not supported by your browser", "error");
+            return;
+        }
+        const input = document.getElementById('locationInput');
+        const originalPlaceholder = input.placeholder;
+        input.value = "";
+        input.placeholder = "Finding City...";
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+                // High accuracy reverse geocoding
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
+                if (!res.ok) throw new Error("API Error");
+                const data = await res.json();
+                // Priority list for city name
+                const city = data.address.city || 
+                             data.address.town || 
+                             data.address.village || 
+                             data.address.municipality ||
+                             data.address.county || 
+                             "London";
+                input.value = city;
+                input.placeholder = originalPlaceholder;
+                this.showModal("Location Found", `Detected: ${city}`, "success");
+                this.searchByLocation(city);
+            } catch (error) {
+                console.error("Locate failed", error);
+                input.placeholder = "City";
+                this.showModal("Error", "Could not detect city name. Type manually.", "error");
+            }
+        }, 
+        (error) => {
+            input.placeholder = "City";
+            let msg = "Please allow location access.";
+            if(error.code === 1) msg = "Permission Denied. Enable location in browser settings.";
+            this.showModal("Location Error", msg, "error");
+        }, 
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+handleSearch(e) { 
+    if (e.key === 'Enter') {
+        this.triggerSearch(); 
+    }
+}
+    filterCategory(category) {
+        if (this.state.activeCategory === category && category !== '') return;
+        this.state.activeCategory = category;
+        this.state.activeSubCategory = ''; 
+        elements.search.value = '';
+        this.state.currentPage = 1;
+        this.updateHistory(); 
+        this.fetchEvents('', elements.location.value);
+    }
+    filterSubCategory(subCat) {
+        if (this.state.activeSubCategory === subCat) return; 
+        this.state.activeSubCategory = subCat;
+        this.state.currentPage = 1;
+        this.updateHistory(); 
+        this.render(); 
+        this.fetchEvents(elements.search.value, elements.location.value);
+    }
+    goHome(updateHistory = true) {
+        this.state.activeCategory = '';
+        this.state.activeSubCategory = '';
+        this.state.searchQuery = '';
+        this.state.selectedEvent = null;
+        elements.search.value = '';
+        this.state.screen = 'home';
+        document.querySelector('nav.sticky').classList.remove('nav-hidden');
+        if (updateHistory) this.updateHistory(); 
+        this.fetchEvents('', '');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    goBack() { 
+        window.history.back(); 
+        document.querySelector('nav.sticky').classList.remove('nav-hidden');
+    window.history.back();
+    }
+    openDetail(eventId) {
+    const event = this.state.events.find(e => String(e.id) === String(eventId));
+    if (event) {
+        this.state.selectedEvent = event;
+        this.state.screen = 'detail';
+        // Save to History when an event is clicked
+        document.querySelector('nav.sticky').classList.remove('nav-hidden');
+        this.updateHistory(); 
+        this.render();
+        window.scrollTo(0,0);
+    }
+}
+    changePage(direction) {
+        const totalPages = Math.ceil(this.state.events.length / this.state.itemsPerPage);
+        const newPage = this.state.currentPage + direction;
+        if (newPage > 0 && newPage <= totalPages) {
+            this.state.currentPage = newPage;
+            this.render(); 
+            window.scrollTo({ top: 350, behavior: 'smooth' });
+        }
+    }
+    render() {
+    if (this.state.loading) {
+        elements.root.innerHTML = `<div class="flex flex-col items-center justify-center py-32 animate-fade-in"><div class="spinner mb-4"></div><p class="text-slate-500 font-medium">Finding events...</p></div>`;
+        return;
+    }
+    const mainNav = document.querySelector('nav.sticky');
+    if (this.state.screen === 'detail') {
+        if (mainNav) {
+            mainNav.classList.add('hidden'); // Tailwind 'hidden' class 
+        }
+        this.renderDetail();
+    } else {
+        if (mainNav) {
+            mainNav.classList.remove('hidden');
+        }
+        this.renderHome();
+    }
+    this.updateNavAuth();
+}
+    renderHome() {
+        // 1. --- MIXED CATEGORY LOGIC START ---
+        let hotEvents = [];
+        const requiredCategories = ['cinema', 'sports', 'music', 'theatre'];
+        
+        requiredCategories.forEach(cat => {
+            let item = this.state.events.find(e => e.type === cat && e.is_hot);
+            if (!item) {
+                item = this.state.events.find(e => e.type === cat);
+            }
+            if (item && !hotEvents.some(h => h.id === item.id)) {
+                hotEvents.push(item);
+            }
+        });
+
+        if (hotEvents.length < 5) {
+            const fillers = this.state.events.filter(e => e.is_hot && !hotEvents.some(h => h.id === e.id));
+            hotEvents = [...hotEvents, ...fillers].slice(0, 5);
+        }
+        if (hotEvents.length === 0) hotEvents = this.state.events.slice(0, 5);
+        // --- MIXED CATEGORY LOGIC END ---
+
+        const festivalEvent = this.state.events.find(e => e.is_festival);
+    let festivalBanner = '';
+    if (festivalEvent) {
+        festivalBanner = `
+        <div class="mb-8 animate-fade-in px-1">
+            <div class="bg-gradient-to-r from-rose-600 to-pink-500 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+                <div class="relative z-10">
+                    <span class="bg-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">UK Special Occasion</span>
+                    <h2 class="text-3xl font-black mt-2">${festivalEvent.festival_name} Specials</h2>
+                    <p class="text-sm opacity-90 mt-1">Found special events for this ${festivalEvent.festival_name} week!</p>
+                </div>
+                <i class="fa-solid fa-gift absolute -right-4 -bottom-4 text-8xl opacity-20 rotate-12"></i>
+            </div>
+        </div>`;
+    }
+
+        const hero = `
+        <div class="mb-8 animate-slide-up">
+            <h2 class="text-xl font-bold text-slate-800 mb-4 px-1 flex items-center gap-2"><i class="fa-solid fa-fire text-red-500"></i> Trending Now</h2>
+            <div class="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 scrollbar-hide">
+                ${hotEvents.map(event => `
+                <div onclick="app.openDetail('${event.id}')" class="snap-center shrink-0 w-[85%] md:w-[600px] h-64 md:h-80 relative rounded-3xl overflow-hidden shadow-xl cursor-pointer group hardware-accel">
+                    <img src="${event.image}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" alt="${event.title}">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                    <div class="absolute bottom-0 left-0 p-6 md:p-8 text-white w-full">
+                        <span class="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-3 inline-block shadow-lg uppercase">HOT</span>
+                        <span class="bg-emerald-600 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-3 inline-block shadow-lg uppercase ml-2">${event.type}</span>
+                        <h2 class="text-2xl md:text-4xl font-extrabold mb-2 line-clamp-2 drop-shadow-md">${event.title}</h2>
+                        <div class="flex items-center gap-1.5 text-xs text-slate-300 mt-auto">
+                            <i class="fa-solid fa-location-dot text-emerald-400"></i>
+                            <span class="truncate">${event.venue}, ${event.city}</span> 
+                        </div>
+                    </div>
+                </div>`).join('')}
+            </div>
+        </div>`;
+
+        let filterSection = '';
+        if (this.state.activeCategory === 'sports') {
+const sportsList = ["Football", "Cricket", "Motorsports", "Polo", "Tennis", "Rugby", "Basketball", "Cycling", "Netball", "Hockey", "Darts", "Snooker"];      
+     filterSection = this.renderSubFilter("Sports Events", sportsList, "fa-trophy");
+        } else if (this.state.activeCategory === 'today') {
+            filterSection = this.renderSubFilter("Events Happening Today", ["Cinema", "Sports", "Music", "Theatre"], "fa-calendar-day", true);
+        } else if (this.state.activeCategory === 'theatre') {
+            const theatreCats = ['Musical', 'Comedy', 'Drama', 'Opera', 'Arts', 'Show'];
+            filterSection = this.renderSubFilter("Theatre & Arts Events", theatreCats, "fa-masks-theater", true);
+        } else if (this.state.activeCategory === 'music') {
+            const musicCats = ['Rock', 'Pop', 'Hip Hop', 'Jazz', 'Electronic', 'Festivals'];
+            filterSection = this.renderSubFilter("Music Concerts & Gigs", musicCats, "fa-music");
+        } else if (this.state.activeCategory === 'movies') {
+const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sci-Fi'];
+            filterSection = this.renderSubFilter("Latest Cinema", cinemaCats, "fa-film");
+        } else {
+            const mainCategories = [
+                { id: '', label: 'All Events', icon: 'fa-layer-group' },
+                { id: 'hot', label: 'Hot', icon: 'fa-fire' },
+                { id: 'today', label: 'Today', icon: 'fa-calendar-day' },
+                { id: 'sports', label: 'Sports', icon: 'fa-trophy' },
+                { id: 'music', label: 'Music', icon: 'fa-music' },
+                { id: 'theatre', label: 'Theatre', icon: 'fa-masks-theater' },
+                { id: 'movies', label: 'Cinema', icon: 'fa-film' }
+            ];
+            filterSection = `
+            <div class="flex gap-3 mb-6 overflow-x-auto scrollbar-hide pb-2 sticky top-[65px] z-40 bg-slate-50 py-3">
+                ${mainCategories.map(cat => `
+                <button onclick="app.filterCategory('${cat.id}')" class="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 ${this.state.activeCategory === cat.id ? 'bg-emerald-900 text-white shadow-lg scale-105' : 'bg-white text-slate-600 hover:bg-slate-200 shadow-sm border border-slate-200'}">
+                <i class="fa-solid ${cat.icon} ${cat.id === 'hot' ? 'text-red-500' : ''}"></i> ${cat.label}</button>`).join('')}
+            </div>`;
+        }
+
+        const totalEvents = this.state.events.length;
+        
+        const totalPages = Math.ceil(totalEvents / this.state.itemsPerPage);
+        const startIndex = (this.state.currentPage - 1) * this.state.itemsPerPage;
+        const currentEvents = this.state.events.slice(startIndex, startIndex + this.state.itemsPerPage);
+        
+        let gridContent = currentEvents.length ? currentEvents.map(event => {
+    const userEmail = this.state.user ? this.state.user.email : '';
+    const likes = JSON.parse(localStorage.getItem(`boqkit_likes_${userEmail}`) || '[]');
+    const isLiked = likes.some(l => String(l.id) === String(event.id));
+
+    return `
+    <div onclick="app.openDetail('${event.id}')" class="event-card bg-white rounded-2xl overflow-hidden shadow-sm cursor-pointer relative h-full flex flex-col">
+        
+
+        <div class="relative h-56 md:h-52 bg-slate-200 overflow-hidden shrink-0">
+            <img src="${event.image}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+            
+            <div class="absolute top-3 left-3 bg-amber-400 px-3 py-1 rounded-full text-[10px] font-bold text-slate-900 z-10 shadow-sm border border-white/20 uppercase">
+                ${event.category || 'Event'}
+            </div>
+        </div>
+
+        <div class="p-4 flex flex-col flex-1">
+            <div class="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                <i class="fa-regular fa-calendar"></i>
+                <span>${event.has_multiple_dates ? '<span class="text-emerald-700 font-bold">Multiple dates</span>' : (event.date || 'TBA')}</span>
+            </div>
+            <h3 class="font-bold text-slate-800 text-sm line-clamp-2 mb-2 leading-snug grow">${event.title}</h3>
+            <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-auto">
+                <i class="fa-solid fa-location-dot text-emerald-600"></i>
+                <span class="truncate">${event.venue}, ${event.city}</span>
+            </div>
+            <div class="mt-3 text-sm font-bold text-slate-900 pt-3 border-t border-slate-100">
+                ${event.price || 'Check details'}
+            </div>
+        </div>
+    </div>`;
+}).join('') : '<div class="col-span-full text-center py-20 bg-white rounded-2xl border-2 border-dashed"><p class="text-slate-400">No events found for this category.</p></div>';
+        const paginationControls = totalEvents > 0 ? `<div class="flex justify-center items-center gap-4 mt-8 pb-8"><button onclick="app.changePage(-1)" ${this.state.currentPage === 1 ? 'disabled class="opacity-50 cursor-not-allowed px-4 py-2 bg-slate-200 rounded-lg"' : 'class="px-4 py-2 bg-emerald-900 text-white rounded-lg hover:bg-emerald-800"'}><i class="fa-solid fa-chevron-left"></i> Prev</button><span class="text-slate-600 font-semibold">Page ${this.state.currentPage} of ${totalPages}</span><button onclick="app.changePage(1)" ${this.state.currentPage === totalPages ? 'disabled class="opacity-50 cursor-not-allowed px-4 py-2 bg-slate-200 rounded-lg"' : 'class="px-4 py-2 bg-emerald-900 text-white rounded-lg hover:bg-emerald-800"'}>Next <i class="fa-solid fa-chevron-right"></i></button></div>` : '';
+
+        elements.root.innerHTML = `<div class="animate-fade-in">${hero}${filterSection}<div class="flex justify-between items-center mb-6 px-1"><h2 class="text-2xl font-bold text-emerald-900">${totalEvents} Events Found</h2></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-2">${gridContent}</div>${paginationControls}</div>`;
+    }
+
+
+    renderSubFilter(title, list, icon, useLower = false) {
+    return `
+    <div class="animate-slide-up">
+        <h2 class="text-xl font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+            <i class="fa-solid ${icon} text-emerald-700"></i> ${title}
+        </h2>
+        <div class="flex gap-3 mb-6 overflow-x-auto scrollbar-hide pb-2 sticky top-[65px] z-40 bg-slate-50 py-3">
+            <button onclick="app.filterCategory('')" class="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-sm">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+
+            <button onclick="app.filterSubCategory('')" class="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${this.state.activeSubCategory === '' ? 'bg-emerald-900 text-white shadow-lg scale-105' : 'bg-white text-slate-600 hover:bg-slate-200 shadow-sm border border-slate-200'}">
+                All ${title.split(' ')[0]}
+            </button>
+
+            ${list.map(item => {
+                const val = useLower ? item.toLowerCase() : item;
+                return `
+                <button onclick="app.filterSubCategory('${val}')" class="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${this.state.activeSubCategory === val ? 'bg-emerald-900 text-white shadow-lg scale-105' : 'bg-white text-slate-600 hover:bg-slate-200 shadow-sm border border-slate-200'}">
+                    ${item}
+                </button>`;
+            }).join('')}
+        </div>
+    </div>`;
+}
+
+    filterCategory(id) {
+        this.state.activeCategory = id;
+        this.state.activeSubCategory = '';
+        this.state.currentPage = 1;
+        this.updateHistory();
+        this.fetchEvents(elements.search.value, elements.location.value);
+    }
+
+    filterSubCategory(val) {
+        this.state.activeSubCategory = val;
+        this.state.currentPage = 1;
+        this.updateHistory();
+        this.fetchEvents(elements.search.value, elements.location.value);
+    }
+
+    changePage(dir) {
+        this.state.currentPage += dir;
+        this.render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+
+    renderDetail() {
+        const event = this.state.selectedEvent;
+        if (!event) return this.goHome();
+        // Date Logic (Original Code)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const evtDate = new Date(event.date);
+        const diffDays = Math.ceil((evtDate - today) / (1000 * 60 * 60 * 24));
+        let daysLabel = "";
+        if (diffDays === 0) daysLabel = "🔥 Happening Today!";
+        else if (diffDays === 1) daysLabel = "⚡ Tomorrow!";
+        else if (diffDays > 1) daysLabel = `⏳ ${diffDays} Days Left`;
+        // Showtimes Logic
+        let dateListHTML = '';
+        if (event.has_multiple_dates && event.all_showtimes) {
+            dateListHTML = `
+            <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h4 class="font-bold text-slate-700 mb-3"> Showtimes:</h4>
+                <div class="flex flex-wrap gap-3 max-h-40 overflow-y-auto custom-scrollbar">
+                    ${event.all_showtimes.map((st, index) => `
+                        <div class="flex flex-col items-center justify-center px-4 py-2 rounded-lg border border-emerald-200 bg-white text-emerald-800 shadow-sm cursor-default">
+                            <span class="text-xs text-slate-500">${st.date}</span>
+                            <span class="text-sm font-bold">${st.time}</span>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+        }
+        // Action Button (Original Green Button)
+        const isMovie = event.type === 'cinema' || event.type === 'tamil';
+const buttonColorClass = isMovie 
+    ? "bg-[#1167D8] hover:bg-[#0e56b2]" 
+    : "bg-emerald-600 hover:bg-emerald-700";
+const actionButton = `
+<div class="flex-1 flex flex-col gap-2">
+    ${daysLabel ? `<div class="text-center font-bold ${isMovie ? 'text-[#1167D8]' : 'text-emerald-700'} animate-pulse">${daysLabel}</div>` : ''}
+    <button onclick="app.handleBooking('${event.booking_url}')"
+    class="w-full inline-flex items-center justify-center gap-2 ${buttonColorClass} text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:-translate-y-1 hover:shadow-xl">
+    <i class="fa-solid fa-external-link-alt"></i>
+    Book Tickets Now
+    </button>
+</div>`;
+        // Original Layout Structure
+        elements.root.innerHTML = `
+        <div class="animate-fade-in pb-10">
+            <button onclick="app.goBack()" class="flex items-center gap-2 text-slate-600 hover:text-emerald-700 font-semibold mb-6 transition-colors pl-4 pt-4">
+                <i class="fa-solid fa-arrow-left"></i> Back to Events
+            </button>
+            <div class="bg-white rounded-3xl shadow-xl overflow-hidden mx-4 mb-4">
+                <div class="relative h-64 md:h-96 bg-slate-200">
+                    <img src="${event.image}" class="w-full h-full object-cover img-optimized" alt="${event.title}" onerror="this.src='https://placehold.co/600x400?text=No+Image'">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                    <div class="absolute bottom-6 left-6 text-white w-[90%]">
+                        <h1 class="text-2xl md:text-4xl font-extrabold mb-2 drop-shadow-lg">${event.title}</h1>
+                        <div class="text-lg opacity-90 flex items-center gap-2 cursor-pointer hover:text-amber-400 transition-colors" 
+     onclick="app.searchByLocation('${event.city}')">
+    <i class="fa-solid fa-location-dot"></i>
+    <span class="border-b border-dashed border-white/50">${event.venue}, ${event.city || 'City'}</span>
+</div>
+                    </div>
+                </div>
+                <div class="p-6 md:p-10">
+                    <div class="flex flex-wrap gap-4 mb-8 text-sm font-semibold">
+                        <span class="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full">
+                            <i class="fa-regular fa-calendar mr-2"></i> ${event.date}
+                        </span>
+                        <span class="bg-amber-50 text-amber-700 px-4 py-2 rounded-full">
+                            <i class="fa-solid fa-tag mr-2"></i> ${event.category}
+                        </span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">About this Event</h3>
+                    <p class="text-slate-600 leading-relaxed mb-8 text-lg">
+                        ${event.description || `Experience ${event.title} live on the big screen. Book your tickets now to secure the best seats.`}
+                    </p>
+                    ${dateListHTML}
+                    <div class="flex flex-col sm:flex-row gap-4 border-t pt-8">
+                        ${actionButton}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        // Show Bottom Nav again if needed (or keep hidden based on your preference)
+        if(elements.bottomNav) elements.bottomNav.classList.remove('hidden');
+        window.scrollTo(0,0);
+elements.root.innerHTML += contactSection;
+    }
+    async handleLike(e, event) {
+    e.stopPropagation(); // Prevents opening the detail page when clicking the heart
+    if (!this.state.isLoggedIn) {
+        this.showModal("Account Required", "Please log in to save events to your likes.", "info");
+        return;
+    }
+    const token = localStorage.getItem('boqkit_token');
+    try {
+        const res = await fetch(`${API_URL}/user/toggle-like`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                event_id: event.id,
+                event_data: {
+                    title: event.title,
+                    image: event.image,
+                    date: event.date,
+                    venue: event.venue
+                }
+            })
+        });
+        const result = await res.json();
+        if(result.status === 'success') {
+            // Refresh the list to show filled/empty heart
+            this.fetchEvents(elements.search.value, elements.location.value);
+        }
+    } catch (err) { console.error("Like failed", err); }
+}
+    showModal(title, message, type = "info") {
+    // Title update
+    elements.modalTitle.innerText = title; 
+    
+    
+    elements.modalMessage.innerHTML = message; 
+
+    // Icon and Type Styling
+    if (type === "error") { 
+        elements.modalIcon.className = "fa-solid fa-circle-xmark text-xl"; 
+        elements.modalIcon.parentElement.className = "w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"; 
+    }
+    else if (type === "success") { 
+        elements.modalIcon.className = "fa-solid fa-circle-check text-xl"; 
+        elements.modalIcon.parentElement.className = "w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4"; 
+    }
+    else { 
+        elements.modalIcon.className = "fa-solid fa-info-circle text-xl"; 
+        elements.modalIcon.parentElement.className = "w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4"; 
+    }
+
+    // Modal Animation and Display
+    elements.modal.classList.remove('hidden');
+    requestAnimationFrame(() => { 
+        elements.modal.classList.remove('opacity-0'); 
+        elements.modal.querySelector('div').classList.remove('scale-95'); 
+        elements.modal.querySelector('div').classList.add('scale-100'); 
+    });
+}
+    closeModal() {
+        elements.modal.classList.add('opacity-0');
+        elements.modal.querySelector('div').classList.remove('scale-100');
+        elements.modal.querySelector('div').classList.add('scale-95');
+        document.body.classList.remove('no-scroll');
+        setTimeout(() => elements.modal.classList.add('hidden'), 300);
+    }
+    async checkUserStatus() {
+    if (this.state.isLoggedIn) {
+        try {
+            const token = localStorage.getItem('boqkit_token');
+            if (!token) return;
+
+            const res = await fetch(`${API_URL}/user/bookings`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.status === 401) {
+                this.state.isLoggedIn = false;
+                this.state.user = null;
+                localStorage.removeItem('boqkit_token');
+                localStorage.removeItem('boqkit_user');
+                alert("Your account has been blocked.");
+                location.reload(); // Instant logout and redirect
+            }
+        } catch (e) {
+            console.error("Auth check failed");
+        }
+    }
+}
+toggleLike(event) {
+    if (!this.state.isLoggedIn || !this.state.user) {
+        alert("Please login to like events");
+        return;
+    }
+    const userEmail = this.state.user.email;
+    const storageKey = `boqkit_likes_${userEmail}`; 
+    let likes = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    // Check if already liked
+    const index = likes.findIndex(item => item.id === event.id);
+    if (index > -1) {
+        // Already liked, so unlike it
+        likes.splice(index, 1);
+    } else {
+        // Add to likes
+        likes.unshift({
+            id: event.id,
+            title: event.title,
+            image: event.image,
+            venue: event.venue,
+            date: event.date,
+            likedAt: new Date().toLocaleString()
+        });
+    }
+    localStorage.setItem(storageKey, JSON.stringify(likes));
+    this.renderEvents(); // UI-ai update seiya
+}
+    addToViewHistory(event) {
+    let history = JSON.parse(localStorage.getItem('boqkit_view_history') || '[]');
+    // Remove if already exists to avoid duplicates
+    history = history.filter(item => item.id !== event.id);
+    // Add new event at the beginning of the list
+    history.unshift({
+        id: event.id,
+        title: event.title,
+        image: event.image,
+        venue: event.venue,
+        date: event.date,
+        viewedAt: new Date().toLocaleString()
+    });
+    // Keep only the last 15 viewed items
+    localStorage.setItem('boqkit_view_history', JSON.stringify(history.slice(0, 15)));
+}
+renderHistoryList(title, items) {
+    if (!items || items.length === 0) {
+        this.showModal(title, "No recently viewed events found.", "info");
+        return;
+    }
+    let html = `<div class="space-y-3 max-h-[60vh] overflow-y-auto p-2 custom-scrollbar">`;
+    items.forEach(item => {
+        html += `
+            <div onclick="app.closeModal(); app.openDetail('${item.id}')" class="flex gap-4 p-3 bg-white rounded-xl border border-slate-200 text-left shadow-sm hover:border-emerald-500 cursor-pointer transition-all">
+                <img src="${item.image}" class="w-14 h-14 rounded-lg object-cover">
+                <div class="flex-1">
+                    <h4 class="font-bold text-xs text-slate-800 line-clamp-1">${item.title}</h4>
+                    <p class="text-[10px] text-slate-500">${item.venue}</p>
+                    <div class="flex justify-between items-center mt-1">
+                        <p class="text-[10px] font-bold text-emerald-700">${item.date}</p>
+                        <p class="text-[9px] text-slate-400">Viewed at: ${item.viewedAt}</p>
+                    </div>
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalMessage').innerHTML = html;
+    const modal = document.getElementById('modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+openHistoryPage() {
+    // 1. Strict Login Check (Both State and LocalStorage Token)
+    const token = localStorage.getItem('boqkit_token');
+    if (!this.state.isLoggedIn || !token) {
+        // Force state to false if token is missing
+        this.state.isLoggedIn = false;
+        this.state.user = null;
+        this.updateNavAuth();
+        // Open Login Modal and Stop
+        this.openAuthModal('login');
+        return;
+    }
+    // 2. Only if logged in, show the UI
+    const title = "User Activity History";
+    const html = `
+        <div class="flex p-1 bg-slate-100 rounded-xl mb-6">
+            <button onclick="app.renderHistoryTabs('booking')" id="tabBooking" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-emerald-900 transition-all">Booking History</button>
+        </div>
+        <div id="historyContent" class="space-y-3 max-h-[50vh] overflow-y-auto p-1 custom-scrollbar">
+            </div>
+    `;
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalMessage').innerHTML = html;
+    const modal = document.getElementById('modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    // Initial load
+    this.renderHistoryTabs('view');
+}
+async renderHistoryTabs(tab) {
+    const contentArea = document.getElementById('historyContent');
+    const tabView = document.getElementById('tabView');
+    const tabBooking = document.getElementById('tabBooking');
+    // Security re-check on tab switch
+    if (!this.state.isLoggedIn || !localStorage.getItem('boqkit_token')) {
+        this.closeModal();
+        this.openAuthModal('login');
+        return;
+    }
+    else {
+        tabView.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-emerald-900 transition-all";
+        tabBooking.className = "flex-1 py-2 text-xs font-bold rounded-lg shadow-sm bg-white text-emerald-900 transition-all";
+        contentArea.innerHTML = `<div class="flex justify-center py-8"><div class="spinner w-8 h-8"></div></div>`;
+        try {
+            const token = localStorage.getItem('boqkit_token');
+            const res = await fetch(`${API_URL}/user/bookings`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+            const bookings = [...(result.tickets || []), ...(result.history || [])];
+            this.displayHistoryItems(contentArea, bookings, "No booking history found.");
+        } catch (e) {
+            contentArea.innerHTML = `<p class="text-center text-xs text-red-500 py-8">Error loading data.</p>`;
+        }
+    }
+}
+displayHistoryItems(container, items, emptyMsg) {
+    if (!items || items.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">${emptyMsg}</div>`;
+        return;
+    }
+    container.innerHTML = items.map(item => `
+        <div onclick="app.closeModal(); app.openDetail('${item.id}')" class="flex gap-4 p-3 bg-white rounded-xl border border-slate-100 text-left hover:border-emerald-500 transition-all cursor-pointer shadow-sm">
+            <img src="${item.image}" class="w-12 h-12 rounded-lg object-cover bg-slate-50">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-[11px] text-slate-800 truncate">${item.title}</h4>
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-[10px] font-bold text-emerald-700">${item.date}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+// 1. Sidebar open/close control
+toggleSidebar() {
+    const menu = document.getElementById('sideMenu');
+    menu.classList.toggle('hidden');
+}
+
+// 2. User Account Data-vai Modal-il kaatta
+showAccountInfo() {
+    if (!this.state.isLoggedIn) {
+        this.showModal("Access Denied", "Please login to view account details", "info");
+        this.openAuthModal('login');
+        return;
+    }
+
+    const user = this.state.user;
+    const html = `
+        <div class="text-left space-y-4 p-2">
+            <div class="flex items-center gap-4 bg-emerald-50 p-4 rounded-2xl">
+                <div class="w-16 h-16 bg-emerald-900 text-white rounded-full flex items-center justify-center text-2xl font-bold">
+                    ${user.fullname.charAt(0)}
+                </div>
+                <div>
+                    <h4 class="font-bold text-lg">${user.fullname}</h4>
+                    <p class="text-xs text-slate-500">Boqkit Member</p>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <p class="text-sm"><strong>Email:</strong> ${user.email}</p>
+                <p class="text-sm"><strong>Mobile:</strong> ${user.mobile || 'Not updated'}</p>
+                <p class="text-sm"><strong>City:</strong> ${user.city || 'Not updated'}</p>
+            </div>
+            <button onclick="app.closeModal()" class="w-full mt-4 border border-emerald-900 text-emerald-900 py-2 rounded-lg font-bold">Close</button>
+        </div>
+    `;
+    
+    document.getElementById('modalTitle').innerText = "Account Settings";
+    document.getElementById('modalMessage').innerHTML = html;
+    this.openModalUI();
+}
+
+openModalUI() {
+    const modal = document.getElementById('modal');
+    modal.classList.remove('hidden');
+    document.body.classList.add('no-scroll');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+// 1. Sell Ticket Form (Price, Contact & Image URL)
+openSellTicketPage() {
+    if (!this.state.isLoggedIn) {
+        this.showModal("Login Required", "Please login to sell tickets.", "info");
+        this.openAuthModal('login');
+        return;
+    }
+
+    const html = `
+    <form onsubmit="app.handleSellTicket(event)" class="text-left space-y-4 max-h-[75vh] overflow-y-auto p-2 custom-scrollbar">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Ticket / Event Name</label>
+                <input type="text" id="sell_title" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Category</label>
+                <select id="sell_category" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+                    <option value="cinema">Cinema</option>
+                    <option value="sports">Sports</option>
+                    <option value="music">Music</option>
+                    <option value="theatre">Theatre</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Price Per Ticket (£)</label>
+                <input type="number" id="sell_price" required placeholder="0.00" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Number of Tickets</label>
+                <input type="number" id="sell_quantity" required min="1" value="1" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">City</label>
+                <input type="text" id="sell_city" required placeholder="e.g. London" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Date</label>
+                <input type="date" id="sell_date" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Time</label>
+                <input type="time" id="sell_time" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Contact (Email/Mobile)</label>
+            <input type="text" id="sell_contact" required placeholder="How should buyers reach you?" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Ticket Image URL (Optional)</label>
+            <input type="url" id="sell_image" placeholder="https://..." class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Additional Notes</label>
+            <textarea id="sell_notes" placeholder="e.g. Row M, Seat 4..." class="w-full px-4 py-2 rounded-lg border text-sm outline-none h-20"></textarea>
+        </div>
+
+        <button type="submit" id="sellSubmitBtn" class="w-full bg-emerald-900 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition-all">
+            List Ticket for Sale
+        </button>
+    </form>
+    `;
+    document.getElementById('modalTitle').innerText = "Sell Ticket";
+    document.getElementById('modalMessage').innerHTML = html;
+    this.openModalUI();
+}
+
+// 2. Edit Sale Function
+async editSale(listing_id) {
+    // 1. Fetch current data for this ID
+    const token = localStorage.getItem('boqkit_token');
+    const res = await fetch(`${API_URL}/user/get-sale/${listing_id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const result = await res.json();
+    const item = result.data;
+
+    // 2. Open form with existing values
+    this.openSellTicketPage(); // First open form
+    
+    // 3. Fill values
+    document.getElementById('sell_title').value = item.title;
+    document.getElementById('sell_category').value = item.category;
+    document.getElementById('sell_price').value = item.price;
+    document.getElementById('sell_date').value = item.date;
+    document.getElementById('sell_time').value = item.time;
+    document.getElementById('sell_city').value = item.city;
+    document.getElementById('sell_contact').value = item.contact;
+    document.getElementById('sell_image').value = item.image || '';
+
+    // Change form submit to update instead of create
+    const form = document.querySelector('#modalMessage form');
+    form.onsubmit = (e) => this.handleUpdateSale(e, listing_id);
+    document.querySelector('#modalMessage button').innerText = "Update Ticket Detail";
+}
+// 1. User Sales Status (Listing with Edit/Delete Buttons)
+// ✅ 1. Sell Ticket Form Submit Logic (Success Message handling)
+async handleSellTicket(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const originalBtnText = btn.innerText;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner w-4 h-4 border-white inline-block"></div> Listing...';
+
+    const ticketData = {
+        title: document.getElementById('sell_title').value,
+        category: document.getElementById('sell_category').value,
+        price: document.getElementById('sell_price').value,
+        quantity: document.getElementById('sell_quantity').value, 
+        notes: document.getElementById('sell_notes').value,       
+        date: document.getElementById('sell_date').value,
+        time: document.getElementById('sell_time').value,
+        city: document.getElementById('sell_city').value,
+        contact: document.getElementById('sell_contact').value,
+        image: document.getElementById('sell_image').value
+    };
+
+    try {
+        const token = localStorage.getItem('boqkit_token');
+        const res = await fetch(`${API_URL}/user/sell-ticket`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(ticketData)
+        });
+
+        const result = await res.json();
+        if (result.status === 'success') {
+            // ✅ Success Alert and Auto-refresh
+            this.showModal("Success!", "Your ticket has been listed for sale successfully.", "success");
+            
+            setTimeout(() => {
+                this.closeModal();
+                this.openUserSalesStatus(); 
+            }, 2000);
+        } else {
+            this.showModal("Error", result.message || "Failed to list ticket", "error");
+        }
+    } catch (err) {
+        console.error("Fetch error:", err);
+        this.showModal("Error", "Server connection failed", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalBtnText;
+    }
+}
+
+// ✅ 2. Open User Sales Status (Listing with Edit/Delete)
+async openUserSalesStatus() {
+    if (!this.state.isLoggedIn) {
+        this.openAuthModal('login');
+        return;
+    }
+    
+    document.getElementById('modalTitle').innerText = "Sell Ticket Status";
+    document.getElementById('modalMessage').innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
+    this.openModalUI();
+
+    try {
+        const token = localStorage.getItem('boqkit_token');
+        const res = await fetch(`${API_URL}/user/my-sales`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await res.json();
+
+        if (!result.data || result.data.length === 0) {
+            document.getElementById('modalMessage').innerHTML = `
+                <div class="py-10 text-center">
+                    <i class="fa-solid fa-folder-open text-4xl text-slate-200 mb-3"></i>
+                    <p class="text-slate-400">No tickets found in your sell list.</p>
+                    <button onclick="app.openSellTicketPage()" class="mt-4 text-emerald-700 font-bold text-sm underline">Sell a ticket now</button>
+                </div>`;
+            return;
+        }
+
+        let html = `<div class="space-y-3 max-h-[60vh] overflow-y-auto p-2 custom-scrollbar">`;
+        result.data.forEach(item => {
+            html += `
+                <div class="flex gap-4 p-3 bg-white rounded-xl border border-slate-200 text-left shadow-sm hover:border-emerald-500 transition-all">
+                    <img src="${item.image || 'https://placehold.co/100'}" class="w-14 h-14 rounded-lg object-cover bg-slate-50" onerror="this.src='https://placehold.co/100'">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-xs truncate text-slate-800">${item.title}</h4>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[10px] text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded">£${item.price}</span>
+                            <span class="text-[9px] font-bold uppercase text-slate-400">${item.status}</span>
+                        </div>
+                        <p class="text-[9px] text-slate-500 mt-1"><i class="fa-solid fa-location-dot"></i> ${item.city}</p>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="app.editSale('${item.listing_id}')" class="text-[10px] bg-slate-100 text-slate-600 px-3 py-1 rounded font-bold hover:bg-emerald-900 hover:text-white transition-all">Edit</button>
+                            <button onclick="app.deleteSale('${item.listing_id}')" class="text-[10px] bg-red-50 text-red-600 px-3 py-1 rounded font-bold hover:bg-red-600 hover:text-white transition-all">Delete</button>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        html += `</div>`;
+        document.getElementById('modalMessage').innerHTML = html;
+    } catch (e) { 
+        document.getElementById('modalMessage').innerHTML = `<p class="text-red-500 text-xs py-10 text-center">Connection Error. Please try again.</p>`;
+    }
+}
+
+// 2. Handle Update (Sending edited data to Backend)
+async handleUpdateSale(e, listing_id) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner w-4 h-4 border-white"></div> Updating...';
+
+    const ticketData = {
+        title: document.getElementById('sell_title').value,
+        category: document.getElementById('sell_category').value,
+        price: document.getElementById('sell_price').value,
+        quantity: document.getElementById('sell_quantity').value, 
+        notes: document.getElementById('sell_notes').value,
+        date: document.getElementById('sell_date').value,
+        time: document.getElementById('sell_time').value,
+        city: document.getElementById('sell_city').value,
+        contact: document.getElementById('sell_contact').value,
+        image: document.getElementById('sell_image').value
+    };
+
+    try {
+        const token = localStorage.getItem('boqkit_token');
+        const res = await fetch(`${API_URL}/user/update-sale/${listing_id}`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(ticketData)
+        });
+
+        const result = await res.json();
+        if (result.status === 'success') {
+            this.showModal("Updated!", "Your ticket details have been updated.", "success");
+            setTimeout(() => this.openUserSalesStatus(), 1500); // Redirect back to list
+        } else {
+            this.showModal("Error", result.message, "error");
+        }
+    } catch (err) {
+        this.showModal("Error", "Server connection failed", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Update Ticket Detail";
+    }
+}
+
+// 3. Delete Logic
+async deleteSale(id) {
+    if(!confirm("Are you sure you want to delete this listing?")) return;
+    try {
+        const token = localStorage.getItem('boqkit_token');
+        const res = await fetch(`${API_URL}/user/delete-sale/${id}`, { 
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await res.json();
+        if(result.status === 'success') {
+            this.openUserSalesStatus(); // Refresh list
+        }
+    } catch (e) {
+        alert("Delete failed.");
+    }
+}
+showForgotPasswordUI() {
+    const html = `
+    <div class="space-y-4 p-2 text-left">
+        <p class="text-xs text-slate-500 mb-2">Register seidha email-ai ulshuluthavum. Password reset token anuppapadum.</p>
+        <input type="email" id="resetEmail" placeholder="you@example.com" 
+               class="w-full px-4 py-3 rounded-xl border text-sm outline-none focus:border-emerald-500">
+        <button onclick="app.handleForgotPassword()" id="sendResetBtn" 
+                class="w-full bg-emerald-900 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition-all">Send Reset Token</button>
+    </div>`;
+    
+    document.getElementById('modalTitle').innerText = "Forgot Password";
+    document.getElementById('modalMessage').innerHTML = html;
+    
+    // Modal-ai open seiya
+    const modal = document.getElementById('modal');
+    modal.classList.remove('hidden');
+    document.body.classList.add('no-scroll');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+
+async handleForgotPassword() {
+    const email = document.getElementById('resetEmail').value;
+    if(!email) return alert("Email podunghal!");
+
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+    const result = await res.json();
+    
+    if(result.status === 'success') {
+        // Success vanthavudan Reset UI-ai kaatta vendum
+        this.showResetPasswordUI(result.debug_token);
+    } else {
+        alert(result.message);
+    }
+}
+
+showResetPasswordUI(token) {
+    const html = `
+    <div class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl text-center mt-20">
+        <h2 class="text-2xl font-bold text-emerald-900 mb-4">Set New Password</h2>
+        <p class="text-xs text-slate-500 mb-6">Pudhiya password-ai enter seiyungal</p>
+        <input type="password" id="p1" placeholder="New Password" class="w-full p-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-emerald-500">
+        <input type="password" id="p2" placeholder="Confirm Password" class="w-full p-3 border rounded-xl mb-6 outline-none focus:ring-2 focus:ring-emerald-500">
+        <button onclick="app.handleResetSubmit('${token}')" class="w-full bg-emerald-900 text-white py-3 rounded-xl font-bold">Update Password</button>
+    </div>`;
+    document.getElementById('app-root').innerHTML = html;
+}
+
+// 3. Backend-ukku pudhu password anuppa
+async handleResetSubmit(token) {
+    const p1 = document.getElementById('p1').value;
+    const p2 = document.getElementById('p2').value;
+    
+    if(!p1) return alert("Password cannot be empty!");
+    if(p1 !== p2) return alert("Passwords do not match!");
+
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password: p1 })
+    });
+    const result = await res.json();
+    
+    if(result.status === 'success') {
+        alert("Password updated! Please login with your new password.");
+        window.location.href = "index.html"; 
+    } else {
+        alert(result.message);
+    }
+}
+// 1. Forgot Email Modal-ai kaatta
+showForgotPasswordUI() {
+    this.closeAuthModal();
+    const html = `
+    <div class="space-y-4 p-2 text-center">
+        <i class="fa-solid fa-envelope-open-text text-4xl text-emerald-600 mb-2"></i>
+        <p class="text-sm text-slate-600">Please enter your registered email. We will send you a password reset link.</p>
+        <input type="email" id="resetEmail" placeholder="name@example.com" 
+               class="w-full px-4 py-3 rounded-xl border text-sm outline-none focus:border-emerald-500">
+        <button onclick="app.handleForgotPassword()" class="w-full bg-emerald-900 text-white py-3 rounded-xl font-bold">Send Reset Link</button>
+    </div>`;
+    
+    document.getElementById('modalTitle').innerText = "Reset Password";
+    document.getElementById('modalMessage').innerHTML = html;
+    this.openModalUI();
+}
+
+// 2. Backend-ukku email request anuppa
+async handleForgotPassword() {
+    const email = document.getElementById('resetEmail').value;
+    if(!email) return alert("Please enter your email!");
+
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+    const result = await res.json();
+    
+    if(result.status === 'success') {
+        this.showModal("Email Sent!", "Please check your inbox for the reset link.", "success");
+    } else {
+        this.showModal("Error", result.message, "error");
+    }
+}
+
+// 3. ORE PAGE-il reset UI kaatta
+showResetPasswordUI(token) {
+    const html = `
+    <div class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl text-center mt-20">
+        <h2 class="text-2xl font-bold text-emerald-900 mb-4">Set New Password</h2>
+        <p class="text-xs text-slate-500 mb-6">Please enter your new password below</p>
+        <input type="password" id="p1" placeholder="New Password" class="w-full p-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-emerald-500">
+        <input type="password" id="p2" placeholder="Confirm Password" class="w-full p-3 border rounded-xl mb-6 outline-none focus:ring-2 focus:ring-emerald-500">
+        <button onclick="app.handleResetSubmit('${token}')" class="w-full bg-emerald-900 text-white py-3 rounded-xl font-bold">Update Password</button>
+    </div>`;
+    
+    document.getElementById('app-root').innerHTML = html;
+    // Hide main navigation during reset
+    const mainNav = document.querySelector('nav.sticky');
+    if(mainNav) mainNav.classList.add('hidden');
+}
+
+// 4. Pudhu password-ai backend-il update seiya
+async handleResetSubmit(token) {
+    const p1 = document.getElementById('p1').value;
+    const p2 = document.getElementById('p2').value;
+    
+    if(!p1) return alert("Password cannot be empty!");
+    if(p1 !== p2) return alert("Passwords do not match!");
+
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password: p1 })
+    });
+    const result = await res.json();
+    
+    if(result.status === 'success') {
+        alert("Password updated! Please login with your new password.");
+        window.location.href = "index.html"; 
+    } else {
+        alert(result.message);
+    }
+}
+}
+window.app = new BoqkitApp();
+console.log("⚡ Boqkit Optimized App Loaded");
+</script>
+<footer class="bg-emerald-950 text-white py-12 px-6 mt-12 border-t border-emerald-800 hardware-accel">
+    <div class="max-w-7xl mx-auto">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            
+            <div class="col-span-2 md:col-span-1 flex flex-col gap-4">
+                <h2 class="text-2xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-ticket text-amber-400"></i> boqkit
+                </h2>
+                <p class="text-emerald-400/80 text-sm leading-relaxed">
+                    The UK's premier destination for event ticketing and peer-to-peer ticket resale. Simple, secure, and fast.
+                </p>
+                <div class="flex items-center gap-8">
+                    <a href="https://www.instagram.com/boqkit/" target="_blank" class="hover:opacity-75 transition-opacity">
+                        <i class="fa-brands fa-instagram text-2xl text-white"></i>
+                    </a>
+                    <a href="https://www.facebook.com/your_fb_page" target="_blank" class="hover:opacity-75 transition-opacity">
+                        <i class="fa-brands fa-facebook text-2xl text-white"></i>
+                    </a>
+                    <a href="mailto:boqkit.123@gmail.com" class="hover:opacity-75 transition-opacity">
+                        <i class="fa-solid fa-envelope text-2xl text-white"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <h3 class="font-bold text-amber-400 uppercase text-xs tracking-widest mb-2">Company</h3>
+                <a href="javascript:void(0)" onclick="app.showModal('About Us', 'BoqKit is an event discovery platform that helps users find events in one place. We list events across categories such as concerts, sports, festivals, theatre, and live experiences.')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">About Us</a>
+                <a href="javascript:void(0)" onclick="app.showModal('Contact Us', 'Email: boqkit.123@gmail.com\nSupport: 24/7 via email.\nOffice: London, United Kingdom')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">Contact Us</a>
+                <a href="javascript:void(0)" onclick="app.showModal('FAQ', '<div class=\'h-[400px] w-full\'><iframe src=\'https://faq.boqkit.com\' class=\'w-full h-full border-0\'></iframe></div>')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">FAQ</a>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <h3 class="font-bold text-amber-400 uppercase text-xs tracking-widest mb-2">Legal</h3>
+                <a href="javascript:void(0)" onclick="app.showModal('Privacy Policy', '<div class=\'h-[400px] w-full\'><iframe src=\'https://pp.boqkit.com\' class=\'w-full h-full border-0\'></iframe></div>')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">Privacy Policy</a>
+                <a href="javascript:void(0)" onclick="app.showModal('Terms & Conditions', '<div class=\'h-[400px] w-full\'><iframe src=\'https://tc.boqkit.com\' class=\'w-full h-full border-0\'></iframe></div>')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">Terms & Conditions</a>
+                <a href="javascript:void(0)" onclick="app.showModal('Cookie Policy', '<div class=\'h-[400px] w-full\'><iframe src=\'https://cp.boqkit.com\' class=\'w-full h-full border-0\'></iframe></div>')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">Cookie Policy</a>
+                <a href="javascript:void(0)" onclick="app.showModal('Refund Policy', '<div class=\'h-[400px] w-full\'><iframe src=\'https://rp.boqkit.com\' class=\'w-full h-full border-0\'></iframe></div>')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">Refund Policy</a>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <h3 class="font-bold text-amber-400 uppercase text-xs tracking-widest mb-2">Support</h3>
+                <p class="text-xs text-emerald-300">Need help with a booking?</p>
+                <a href="mailto:boqkit.123@gmail.com" class="bg-emerald-800 hover:bg-emerald-700 text-white text-center py-2 rounded-lg text-xs font-bold transition-all">
+                    Email Support
+                </a>
+            </div>
+        </div>
+
+        <div class="border-t border-emerald-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-emerald-500 text-[10px] uppercase tracking-widest">
+                © 2026 BOQKIT LTD. REGISTERED IN ENGLAND & WALES.
+            </p>
+            <div class="flex gap-4 opacity-50 grayscale hover:grayscale-0 transition-all">
+                <i class="fa-brands fa-cc-visa text-2xl"></i>
+                <i class="fa-brands fa-cc-mastercard text-2xl"></i>
+                <i class="fa-brands fa-cc-apple-pay text-2xl"></i>
+            </div>
+        </div>
+    </div>
+</footer>
+</body>
+</html> 
