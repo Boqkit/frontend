@@ -1226,7 +1226,7 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
                 <span class="truncate">${event.venue}, ${event.city}</span>
             </div>
             <div class="mt-3 text-sm font-bold text-slate-900 pt-3 border-t border-slate-100">
-                ${event.price || 'Check details'}
+                ${event.price && event.price !== '£0' ? event.price : 'Check Site'}
             </div>
         </div>
     </div>`;
@@ -2147,7 +2147,7 @@ console.log("⚡ Boqkit Optimized App Loaded");
                     <a href="https://www.instagram.com/boqkit/" target="_blank" class="hover:opacity-75 transition-opacity">
                         <i class="fa-brands fa-instagram text-2xl text-white"></i>
                     </a>
-                    <a href="https://www.facebook.com/your_fb_page" target="_blank" class="hover:opacity-75 transition-opacity">
+                    <a href="https://www.facebook.com/profile.php?id=61587598307548#" target="_blank" class="hover:opacity-75 transition-opacity">
                         <i class="fa-brands fa-facebook text-2xl text-white"></i>
                     </a>
                     <a href="mailto:boqkit.123@gmail.com" class="hover:opacity-75 transition-opacity">
