@@ -301,7 +301,7 @@
 </div>
 <script>
 // CONFIG - POINTING TO LOCALHOST BACKEND
-const API_URL = "http://192.168.1.30:5001/api";
+const API_URL = "http://192.168.1.164:5001/api";
 const elements = {
     root: document.getElementById('app-root'),
     search: document.getElementById('searchInput'),
@@ -828,7 +828,7 @@ renderActivityList(type, items) {
         if (this.state.activeCategory === 'movies' && this.state.activeSubCategory.toLowerCase() === 'indian movies') {
     catParam = 'indian'; 
 } 
-else if (lowerKeyword.includes('indian') || lowerKeyword.includes('tamil')) {
+if (lowerKeyword.includes('indian') || lowerKeyword.includes('bollywood') || lowerKeyword.includes('tollywood')) {
     catParam = 'indian'; 
 }
         else if (catParam && catParam !== 'today' && catParam !== 'hot') {
