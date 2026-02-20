@@ -79,10 +79,14 @@
 
         <div class="w-full max-w-xl mx-auto">
             <div class="flex items-center bg-white rounded-full p-1 gap-1 w-full shadow-inner border border-slate-200">
-                <div class="flex-1 flex items-center px-2 min-w-0">
+                <div class="flex-1 flex items-center px-2 min-w-0 relative">
                     <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs"></i>
-                    <input type="text" id="searchInput" placeholder="Events..." 
-                           class="w-full pl-2 py-1 text-slate-800 outline-none text-xs bg-transparent min-w-0">
+                    <input type="text" id="searchInput" placeholder="Events..." autocomplete="off"
+                           oninput="app.showSuggestions(this.value)"
+                           onkeypress="app.handleSearch(event)"
+                           class="w-full pl-2 py-1 text-slate-800 outline-none text-xs bg-transparent min-w-0 relative z-[201]">
+                    
+                    <div id="searchSuggestions" class="absolute top-12 left-0 w-full min-w-[250px] bg-white rounded-xl shadow-2xl border border-slate-200 hidden z-[9999] max-h-60 overflow-y-auto custom-scrollbar"></div>
                 </div>
                 
                 <div class="flex items-center px-2 border-l border-slate-200 shrink-0">
@@ -371,6 +375,12 @@ class BoqkitApp {
 
         this.readStateFromURL();
         await this.fetchEvents();
+        document.addEventListener('click', (e) => {
+            const box = document.getElementById('searchSuggestions');
+            if (box && !e.target.closest('#searchInput') && !e.target.closest('#searchSuggestions')) {
+                box.classList.add('hidden');
+            }
+        });
     }
     async fetchUserLikes() {
     if (!this.state.isLoggedIn) return;
@@ -947,17 +957,72 @@ if (lowerKeyword.includes('indian') || lowerKeyword.includes('bollywood') || low
         this.render(); 
     }
 }
-    triggerSearch() {
-        const keyword = elements.search.value;
-        const city = elements.location.value;
-        const toDateInput = document.getElementById('toDateInput');
-        const toDate = toDateInput ? toDateInput.value : '';
-        this.state.searchQuery = keyword;
-        this.state.locationQuery = city;
-        this.state.activeCategory = '';
-        this.state.activeSubCategory = '';
-        this.updateHistory(); 
-        this.fetchEvents(keyword, city);
+// =====================================================
+    // SMART SEARCH SUGGESTIONS
+    // =====================================================
+showSuggestions(query) {
+        const box = document.getElementById('searchSuggestions');
+        if (!box) return;
+
+        if (!query || query.length < 2) {
+            box.classList.add('hidden');
+            return;
+        }
+
+        let suggestions = [];
+        const lowerQuery = query.toLowerCase();
+        
+        // 1. Categories Suggestion
+        const categories = ["Football", "Cricket", "Cinema", "Comedy", "Theatre", "Music", "Concert", "Racing", "Boxing", "Wrestling", "Basketball"];
+        categories.forEach(cat => {
+            if (cat.toLowerCase().includes(lowerQuery)) {
+                suggestions.push({ type: 'category', text: cat });
+            }
+        });
+
+        // 2. INSTANT Event Titles Suggestion (Already loaded events-la irunthu fast ah thedum)
+        if (this.state.events && this.state.events.length > 0) {
+            const matchedEvents = this.state.events.filter(e => 
+                (e.title && e.title.toLowerCase().includes(lowerQuery)) || 
+                (e.category && e.category.toLowerCase().includes(lowerQuery)) ||
+                (e.sport_type && e.sport_type.toLowerCase().includes(lowerQuery))
+            );
+
+            // Top 6 match aagura events-a mattum edukkum
+            matchedEvents.slice(0, 6).forEach(event => {
+                if (!suggestions.some(s => s.text === event.title)) {
+                    suggestions.push({ type: 'event', text: event.title, id: event.id });
+                }
+            });
+        }
+
+        // Render HTML for dropdown (Instanta display aagum)
+        if (suggestions.length > 0) {
+            box.innerHTML = suggestions.map(s => `
+                <div onclick="app.selectSuggestion('${s.text.replace(/'/g, "\\'")}', '${s.id || ''}')" 
+                     class="px-4 py-3 hover:bg-slate-100 cursor-pointer text-xs sm:text-sm text-slate-800 flex items-center gap-3 border-b border-slate-100 last:border-0 transition-all">
+                    <i class="fa-solid ${s.type === 'category' ? 'fa-magnifying-glass text-slate-400' : 'fa-ticket text-emerald-600'}"></i>
+                    <span class="truncate font-bold">${s.text}</span>
+                </div>
+            `).join('');
+            box.classList.remove('hidden');
+        } else {
+            box.innerHTML = `<div class="px-4 py-3 text-xs sm:text-sm text-slate-400 text-center">No matching events found</div>`;
+            box.classList.remove('hidden');
+        }
+    }
+    
+
+    selectSuggestion(text, eventId) {
+        const searchInput = document.getElementById('searchInput');
+        searchInput.value = text;
+        document.getElementById('searchSuggestions').classList.add('hidden');
+        
+        if (eventId) {
+            this.openDetail(eventId); 
+        } else {
+            this.triggerSearch(); 
+        }
     }
     searchByLocation(city) {
         if (!city) return;
@@ -1015,10 +1080,23 @@ if (lowerKeyword.includes('indian') || lowerKeyword.includes('bollywood') || low
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
 handleSearch(e) { 
-    if (e.key === 'Enter') {
-        this.triggerSearch(); 
+        if (e.key === 'Enter') {
+            this.triggerSearch(); 
+        }
     }
-}
+
+    triggerSearch() {
+        const keyword = elements.search.value;
+        const city = elements.location.value;
+        const toDateInput = document.getElementById('toDateInput');
+        const toDate = toDateInput ? toDateInput.value : '';
+        this.state.searchQuery = keyword;
+        this.state.locationQuery = city;
+        this.state.activeCategory = '';
+        this.state.activeSubCategory = '';
+        this.updateHistory(); 
+        this.fetchEvents(keyword, city);
+    }
     filterCategory(category) {
         if (this.state.activeCategory === category && category !== '') return;
         this.state.activeCategory = category;
@@ -1154,7 +1232,7 @@ handleSearch(e) {
 
         let filterSection = '';
         if (this.state.activeCategory === 'sports') {
-    const sportsList = ["Football", "Cricket", "Motorsports", "Polo", "Tennis", "Rugby", "Basketball", "Cycling", "Netball", "Hockey", "Darts", "Snooker"];      
+    const sportsList = ["Football", "Cricket", "Motorsports", "Boxing", "Wrestling", "Polo", "Tennis", "Rugby", "Basketball", "Cycling", "Netball", "Hockey", "Darts", "Snooker"];      
     filterSection = this.renderSubFilter("Sports Events", sportsList, "fa-trophy");
 } else if (this.state.activeCategory === 'today') {
             filterSection = this.renderSubFilter("Events Happening Today", ["Cinema", "Sports", "Music", "Theatre"], "fa-calendar-day", true);
