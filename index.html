@@ -305,7 +305,7 @@
 </div>
 <script>
 // CONFIG - POINTING TO LOCALHOST BACKEND
-const API_URL = "http://192.168.1.164:5001/api";
+const API_URL = "https://api.boqkit.com/api";
 const elements = {
     root: document.getElementById('app-root'),
     search: document.getElementById('searchInput'),
@@ -1079,11 +1079,50 @@ showSuggestions(query) {
         }, 
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
-handleSearch(e) { 
-        if (e.key === 'Enter') {
-            this.triggerSearch(); 
-        }
+handleSearch(e) {
+    if (e.key === 'Enter') this.triggerSearch();
+}
+
+async triggerSearch() {
+    const keyword = document.getElementById('searchInput').value;
+    const city = document.getElementById('locationInput').value;
+    
+    // --- TRACKING LOGIC START ---
+    try {
+        // This sends the search data to your Admin Dashboard
+        fetch(`${API_URL}/track-click`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event_id: 'SEARCH_ACTION',
+                event_title: `Search: ${keyword || 'All'} in ${city || 'All Cities'}`,
+                user_email: this.state.user ? this.state.user.email : 'Guest'
+            })
+        });
+    } catch (e) { 
+        console.error("Search tracking failed", e); 
     }
+    // --- TRACKING LOGIC END ---
+
+    this.state.searchQuery = keyword;
+    this.state.locationQuery = city;
+    
+    // Close suggestions if open
+    const box = document.getElementById('searchSuggestions');
+    if (box) box.classList.add('hidden');
+
+    await this.fetchEvents(keyword, city);
+}
+
+locateMe() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            // Simple reverse geocoding or placeholder
+            document.getElementById('locationInput').value = "London"; // Example
+            this.triggerSearch();
+        });
+    }
+}
 
     triggerSearch() {
         const keyword = elements.search.value;
