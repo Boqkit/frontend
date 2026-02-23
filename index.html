@@ -9,6 +9,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 <style>
     /* Performance & Animations */
     .hardware-accel { transform: translateZ(0); will-change: transform; }
@@ -305,7 +306,7 @@
 </div>
 <script>
 // CONFIG - POINTING TO LOCALHOST BACKEND
-const API_URL = "https://api.boqkit.com/api";
+const API_URL = "http://192.168.0.178:5001/api";
 const elements = {
     root: document.getElementById('app-root'),
     search: document.getElementById('searchInput'),
@@ -1609,28 +1610,34 @@ async openLikesPage() {
         setTimeout(() => elements.modal.classList.add('hidden'), 300);
     }
     async checkUserStatus() {
-    if (this.state.isLoggedIn) {
-        try {
-            const token = localStorage.getItem('boqkit_token');
-            if (!token) return;
+        if (this.state.isLoggedIn) {
+            try {
+                const token = localStorage.getItem('boqkit_token');
+                if (!token) return;
 
-            const res = await fetch(`${API_URL}/user/bookings`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (res.status === 401) {
-                this.state.isLoggedIn = false;
-                this.state.user = null;
-                localStorage.removeItem('boqkit_token');
-                localStorage.removeItem('boqkit_user');
-                alert("Your account has been blocked.");
-                location.reload(); // Instant logout and redirect
+                const res = await fetch(`${API_URL}/user/bookings`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.status === 401) {
+                    const data = await res.json(); 
+                    
+                    this.state.isLoggedIn = false;
+                    this.state.user = null;
+                    localStorage.removeItem('boqkit_token');
+                    localStorage.removeItem('boqkit_user');
+                    
+                    if (data.message === 'User not found') {
+                        alert("Your account has been blocked.");
+                    }
+                    
+                    location.reload(); // Instant logout and redirect
+                }
+            } catch (e) {
+                console.error("Auth check failed");
             }
-        } catch (e) {
-            console.error("Auth check failed");
         }
     }
-}
 toggleLike(event) {
     if (!this.state.isLoggedIn || !this.state.user) {
         alert("Please login to like events");
