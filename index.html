@@ -217,6 +217,11 @@
                 <button type="submit" id="loginBtn" class="w-full bg-emerald-900 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-800 transition-all">
         Log In
     </button>
+    <div class="text-right mt-2">
+        <button type="button" onclick="app.showForgotPasswordUI()" class="text-[10px] text-emerald-900 font-bold hover:underline">
+            Forgot Password?
+        </button>
+    </div>
 
     <div class="text-center mt-4">
         <p class="text-slate-500 text-xs font-medium">
@@ -232,12 +237,9 @@
     <div class="flex-grow border-t border-slate-200"></div>
 </div>
 <div id="googleBtnContainer" class="flex justify-center w-full min-h-[40px]"></div>
+
             </form>
-            <div class="text-right mt-2">
-    <button type="button" onclick="app.showForgotPasswordUI()" class="text-[10px] text-emerald-900 font-bold hover:underline">
-        Forgot Password?
-    </button>
-</div>
+           
             <form id="signupForm" class="space-y-4 hidden" onsubmit="app.handleSignupSubmit(event)">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1 ml-1">Full Name</label>
@@ -283,14 +285,6 @@
         Create Account
     </button>
 
-    <div class="relative flex py-4 items-center">
-        <div class="flex-grow border-t border-slate-200"></div>
-        <span class="flex-shrink mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-wider">Or</span>
-        <div class="flex-grow border-t border-slate-200"></div>
-    </div>
-    
-    <div id="googleBtnContainerSignup" class="flex justify-center w-full min-h-[40px]"></div>
-
     <div class="text-center mt-4">
         <p class="text-slate-500 text-[11px] font-medium">
             Already on boqkit? 
@@ -299,6 +293,15 @@
             </button>
         </p>
     </div>
+
+    <div class="relative flex py-4 items-center">
+        <div class="flex-grow border-t border-slate-200"></div>
+        <span class="flex-shrink mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-wider">Or</span>
+        <div class="flex-grow border-t border-slate-200"></div>
+    </div>
+    
+    <div id="googleBtnContainerSignup" class="flex justify-center w-full min-h-[40px]"></div>
+
 </form>
             </form>
         </div>
@@ -306,7 +309,7 @@
 </div>
 <script>
 // CONFIG - POINTING TO LOCALHOST BACKEND
-const API_URL = "http://192.168.0.178:5001/api";
+const API_URL = "https://api.boqkit.com/api";
 const elements = {
     root: document.getElementById('app-root'),
     search: document.getElementById('searchInput'),
@@ -648,6 +651,7 @@ async handleGoogleResponse(response) {
     async handleBooking(url) {
     const event = this.state.selectedEvent;
     
+    // Tracking logic (Original)
     try {
         fetch(`${API_URL}/track-click`, {
             method: 'POST',
@@ -661,7 +665,21 @@ async handleGoogleResponse(response) {
     } catch (e) { console.error("Tracking failed"); }
 
     if (this.state.isLoggedIn) {
+        // Step A: Vera window-la ticket website-ai thirakkavum
         window.open(url, '_blank');
+
+        // Step B: User thirumba Boqkit-kku varum pothu notification kaatta listener
+        const checkReturn = () => {
+            // User thirumba intha tab-kku vanthuttaaraa?
+            this.showBookingConfirmation(event);
+            window.removeEventListener('focus', checkReturn);
+        };
+
+        // User thirumba varum pothu (focus) confirmation modal-ai kaattum
+        setTimeout(() => {
+            window.addEventListener('focus', checkReturn);
+        }, 2000); // 2 seconds gap user website-kku pona piragu
+
     } else {
         this.state.pendingBookingUrl = url;
         this.openAuthModal('login');
@@ -1404,90 +1422,133 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
 
 
     renderDetail() {
-        const event = this.state.selectedEvent;
-        if (!event) return this.goHome();
-        // Date Logic (Original Code)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const evtDate = new Date(event.date);
-        const diffDays = Math.ceil((evtDate - today) / (1000 * 60 * 60 * 24));
-        let daysLabel = "";
-        if (diffDays === 0) daysLabel = "🔥 Happening Today!";
-        else if (diffDays === 1) daysLabel = "⚡ Tomorrow!";
-        else if (diffDays > 1) daysLabel = `⏳ ${diffDays} Days Left`;
-        // Showtimes Logic
-        let dateListHTML = '';
-        if (event.has_multiple_dates && event.all_showtimes) {
-            dateListHTML = `
-            <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h4 class="font-bold text-slate-700 mb-3"> Showtimes:</h4>
-                <div class="flex flex-wrap gap-3 max-h-40 overflow-y-auto custom-scrollbar">
-                    ${event.all_showtimes.map((st, index) => `
-                        <div class="flex flex-col items-center justify-center px-4 py-2 rounded-lg border border-emerald-200 bg-white text-emerald-800 shadow-sm cursor-default">
-                            <span class="text-xs text-slate-500">${st.date}</span>
-                            <span class="text-sm font-bold">${st.time}</span>
-                        </div>`).join('')}
-                </div>
-            </div>`;
-        }
-        // Action Button (Original Green Button)
-        const isMovie = event.type === 'cinema' || event.type === 'tamil';
-const buttonColorClass = isMovie 
-    ? "bg-[#1167D8] hover:bg-[#0e56b2]" 
-    : "bg-emerald-600 hover:bg-emerald-700";
-const actionButton = `
-<div class="flex-1 flex flex-col gap-2">
-    ${daysLabel ? `<div class="text-center font-bold ${isMovie ? 'text-[#1167D8]' : 'text-emerald-700'} animate-pulse">${daysLabel}</div>` : ''}
-    <button onclick="app.handleBooking('${event.booking_url}')"
-    class="w-full inline-flex items-center justify-center gap-2 ${buttonColorClass} text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:-translate-y-1 hover:shadow-xl">
-    <i class="fa-solid fa-external-link-alt"></i>
-    Book Tickets Now
-    </button>
-</div>`;
-        // Original Layout Structure
-        elements.root.innerHTML = `
-        <div class="animate-fade-in pb-10">
-            <button onclick="app.goBack()" class="flex items-center gap-2 text-slate-600 hover:text-emerald-700 font-semibold mb-6 transition-colors pl-4 pt-4">
-                <i class="fa-solid fa-arrow-left"></i> Back to Events
-            </button>
-            <div class="bg-white rounded-3xl shadow-xl overflow-hidden mx-4 mb-4">
-                <div class="relative h-64 md:h-96 bg-slate-200">
-                    <img src="${event.image}" class="w-full h-full object-cover img-optimized" alt="${event.title}" onerror="this.src='https://placehold.co/600x400?text=No+Image'">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                    <div class="absolute bottom-6 left-6 text-white w-[90%]">
-                        <h1 class="text-2xl md:text-4xl font-extrabold mb-2 drop-shadow-lg">${event.title}</h1>
-                        <div class="text-lg opacity-90 flex items-center gap-2 cursor-pointer hover:text-amber-400 transition-colors" 
-     onclick="app.searchByLocation('${event.city}')">
-    <i class="fa-solid fa-location-dot"></i>
-    <span class="border-b border-dashed border-white/50">${event.venue}, ${event.city || 'City'}</span>
-</div>
+    const event = this.state.selectedEvent;
+    if (!event) return this.goHome();
+
+    // 1. --- HISTORY & TRACKING ---
+    // User entha event-ai paarkiraar-nu history-la save panrom
+    this.addToViewHistory(event); 
+
+    // 2. --- DYNAMIC RELATED TICKETS ---
+    // User football-na football, movie-na movie tickets-ai mela kaatta filter logic
+    const relatedTickets = this.state.events
+        .filter(e => (e.type === event.type || e.category === event.category) && e.id !== event.id)
+        .slice(0, 6);
+
+    let relatedHTML = '';
+    if (relatedTickets.length > 0) {
+        relatedHTML = `
+        <div class="mt-8 mb-4 animate-slide-up">
+            <h4 class="text-sm font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+                <i class="fa-solid fa-ticket text-emerald-600"></i> 
+                Recommended ${event.type === 'indian' ? 'Indian Movies' : 'Similar'} Tickets
+            </h4>
+            <div class="flex gap-3 overflow-x-auto pb-4 scrollbar-hide px-1">
+                ${relatedTickets.map(t => `
+                    <div onclick="app.openDetail('${t.id}')" class="shrink-0 w-36 bg-white border border-slate-100 rounded-2xl p-2 shadow-sm hover:border-emerald-500 transition-all cursor-pointer">
+                        <img src="${t.image}" class="w-full h-20 object-cover rounded-xl mb-2" onerror="this.src='https://placehold.co/200x120?text=No+Image'">
+                        <h5 class="text-[10px] font-bold text-slate-800 line-clamp-2 leading-tight">${t.title}</h5>
+                        <p class="text-[9px] font-bold text-emerald-700 mt-1">${t.date}</p>
                     </div>
-                </div>
-                <div class="p-6 md:p-10">
-                    <div class="flex flex-wrap gap-4 mb-8 text-sm font-semibold">
-                        <span class="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full">
-                            <i class="fa-regular fa-calendar mr-2"></i> ${event.date}
-                        </span>
-                        <span class="bg-amber-50 text-amber-700 px-4 py-2 rounded-full">
-                            <i class="fa-solid fa-tag mr-2"></i> ${event.category}
-                        </span>
-                    </div>
-                    <h3 class="text-xl font-bold text-slate-800 mb-3">About this Event</h3>
-                    <p class="text-slate-600 leading-relaxed mb-8 text-lg">
-                        ${event.description || `Experience ${event.title} live on the big screen. Book your tickets now to secure the best seats.`}
-                    </p>
-                    ${dateListHTML}
-                    <div class="flex flex-col sm:flex-row gap-4 border-t pt-8">
-                        ${actionButton}
+                `).join('')}
+            </div>
+        </div>`;
+    }
+
+    // 3. --- DATE & STATUS LOGIC ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const evtDate = new Date(event.date);
+    const diffDays = Math.ceil((evtDate - today) / (1000 * 60 * 60 * 24));
+    let daysLabel = "";
+    if (diffDays === 0) daysLabel = "🔥 Happening Today!";
+    else if (diffDays === 1) daysLabel = "⚡ Tomorrow!";
+    else if (diffDays > 1) daysLabel = `⏳ ${diffDays} Days Left`;
+
+    // 4. --- MULTIPLE SHOWTIMES LOGIC ---
+    let dateListHTML = '';
+    if (event.has_multiple_dates && event.all_showtimes) {
+        dateListHTML = `
+        <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h4 class="font-bold text-slate-700 mb-3 text-sm"> Showtimes:</h4>
+            <div class="flex flex-wrap gap-3 max-h-40 overflow-y-auto custom-scrollbar">
+                ${event.all_showtimes.map(st => `
+                    <div class="flex flex-col items-center justify-center px-4 py-2 rounded-lg border border-emerald-200 bg-white text-emerald-800 shadow-sm">
+                        <span class="text-[10px] text-slate-500">${st.date}</span>
+                        <span class="text-xs font-bold">${st.time}</span>
+                    </div>`).join('')}
+            </div>
+        </div>`;
+    }
+
+    // 5. --- ACTION BUTTON LOGIC ---
+    const isMovie = event.type === 'cinema' || event.type === 'tamil' || event.type === 'indian';
+    const buttonColorClass = isMovie ? "bg-[#1167D8] hover:bg-[#0e56b2]" : "bg-emerald-600 hover:bg-emerald-700";
+    
+    const actionButton = `
+    <div class="flex-1 flex flex-col gap-2 w-full">
+        ${daysLabel ? `<div class="text-center font-bold ${isMovie ? 'text-[#1167D8]' : 'text-emerald-700'} animate-pulse text-sm">${daysLabel}</div>` : ''}
+        <button onclick="app.handleBooking('${event.booking_url}')"
+        class="w-full inline-flex items-center justify-center gap-2 ${buttonColorClass} text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:-translate-y-1 hover:shadow-xl">
+            <i class="fa-solid fa-external-link-alt"></i> Book Tickets Now
+        </button>
+    </div>`;
+
+    // 6. --- UI RENDER (FULL STRUCTURE) ---
+    elements.root.innerHTML = `
+    <div class="animate-fade-in pb-10">
+        <button onclick="app.goBack()" class="flex items-center gap-2 text-slate-600 hover:text-emerald-700 font-semibold mb-6 transition-colors pl-4 pt-4">
+            <i class="fa-solid fa-arrow-left"></i> Back to Events
+        </button>
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden mx-4 mb-4">
+            <div class="relative h-64 md:h-96 bg-slate-200">
+                <img src="${event.image}" class="w-full h-full object-cover img-optimized" alt="${event.title}" onerror="this.src='https://placehold.co/600x400?text=No+Image'">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                <div class="absolute bottom-6 left-6 text-white w-[90%]">
+                    <h1 class="text-2xl md:text-4xl font-extrabold mb-2 drop-shadow-lg">${event.title}</h1>
+                    <div class="text-lg opacity-90 flex items-center gap-2 cursor-pointer hover:text-amber-400 transition-colors" onclick="app.searchByLocation('${event.city}')">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span class="border-b border-dashed border-white/50">${event.venue}, ${event.city || 'City'}</span>
                     </div>
                 </div>
             </div>
-        </div>`;
-        // Show Bottom Nav again if needed (or keep hidden based on your preference)
-        if(elements.bottomNav) elements.bottomNav.classList.remove('hidden');
-        window.scrollTo(0,0);
-elements.root.innerHTML += contactSection;
+            <div class="p-6 md:p-10">
+                <div class="flex flex-wrap gap-4 mb-8 text-sm font-semibold">
+                    <span class="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full"><i class="fa-regular fa-calendar mr-2"></i> ${event.date}</span>
+                    <span class="bg-amber-50 text-amber-700 px-4 py-2 rounded-full"><i class="fa-solid fa-tag mr-2"></i> ${event.category}</span>
+                </div>
+                
+                <h3 class="text-xl font-bold text-slate-800 mb-3">About this Event</h3>
+                <p class="text-slate-600 leading-relaxed mb-8 text-lg">
+                    ${event.description || `Experience ${event.title} live on the big screen. Book your tickets now to secure the best seats.`}
+                </p>
+
+                ${dateListHTML}
+
+                ${relatedHTML}
+
+                <div class="flex flex-col sm:flex-row gap-4 border-t pt-8">
+                    ${actionButton}
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    // 7. --- STICKY NAV, CONTACT & BOTTOM NAV ---
+    const mainNav = document.querySelector('nav.sticky');
+    if (mainNav) mainNav.classList.remove('hidden');
+
+    // Contact details restore
+    if (typeof contactSection !== 'undefined') {
+        elements.root.innerHTML += contactSection;
     }
+
+    // Bottom navigation bar restore
+    const mobileNav = document.querySelector('.mobile-nav');
+    if (mobileNav) mobileNav.classList.remove('hidden');
+
+    window.scrollTo(0, 0);
+}
     async handleLike(e, eventId) {
     if (e) {
         e.preventDefault();
@@ -1601,6 +1662,16 @@ async openLikesPage() {
         elements.modal.querySelector('div').classList.remove('scale-95'); 
         elements.modal.querySelector('div').classList.add('scale-100'); 
     });
+    
+}
+async confirmBookingStatus(isBooked, eventId) {
+    if (isBooked) {
+        this.showModal("Thank You!", "We've updated your booking activity.", "success");
+        
+        setTimeout(() => this.closeModal(), 2000);
+    } else {
+        this.closeModal();
+    }
 }
     closeModal() {
         elements.modal.classList.add('opacity-0');
@@ -1610,34 +1681,27 @@ async openLikesPage() {
         setTimeout(() => elements.modal.classList.add('hidden'), 300);
     }
     async checkUserStatus() {
-        if (this.state.isLoggedIn) {
-            try {
-                const token = localStorage.getItem('boqkit_token');
-                if (!token) return;
+    if (this.state.isLoggedIn) {
+        try {
+            const token = localStorage.getItem('boqkit_token');
+            if (!token) return;
 
-                const res = await fetch(`${API_URL}/user/bookings`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (res.status === 401) {
-                    const data = await res.json(); 
-                    
-                    this.state.isLoggedIn = false;
-                    this.state.user = null;
-                    localStorage.removeItem('boqkit_token');
-                    localStorage.removeItem('boqkit_user');
-                    
-                    if (data.message === 'User not found') {
-                        alert("Your account has been blocked.");
-                    }
-                    
-                    location.reload(); // Instant logout and redirect
-                }
-            } catch (e) {
-                console.error("Auth check failed");
+            const res = await fetch(`${API_URL}/user/bookings`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.status === 401) {
+                this.state.isLoggedIn = false;
+                this.state.user = null;
+                localStorage.removeItem('boqkit_token');
+                localStorage.removeItem('boqkit_user');
+                location.reload(); 
             }
+        } catch (e) {
+            console.error("Connection error");
         }
     }
+}
 toggleLike(event) {
     if (!this.state.isLoggedIn || !this.state.user) {
         alert("Please login to like events");
@@ -1845,12 +1909,42 @@ openSellTicketPage() {
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Category</label>
                 <select id="sell_category" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
+                                <option value="ticket_category">Category Entry</option>
                     <option value="cinema">Cinema</option>
                     <option value="sports">Sports</option>
                     <option value="music">Music</option>
                     <option value="theatre">Theatre</option>
                 </select>
             </div>
+            <div class="grid grid-cols-2 gap-4">
+    <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Entry Type</label>
+        <select id="sell_entry_type" class="w-full px-4 py-2 rounded-lg border text-sm outline-none focus:border-emerald-500">
+            <option value="Standard">Standard Entry</option>
+            <option value="VIP">VIP Entry</option>
+            <option value="Early Bird">Early Bird</option>
+            <option value="Student/Senior">Discounted (Student/Senior)</option>
+        </select>
+    </div>
+    <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Seating Detail</label>
+        <select id="sell_seating_type" class="w-full px-4 py-2 rounded-lg border text-sm outline-none focus:border-emerald-500">
+            <option value="Seated">Allocated Seating</option>
+            <option value="Standing">Standing Only</option>
+            <option value="General Admission">General Admission (Unreserved)</option>
+        </select>
+    </div>
+</div>
+
+<div id="seat_details_group" class="mt-2">
+    <label class="block text-xs font-bold text-slate-700 mb-1">Seat Assignment (Optional)</label>
+    <div class="flex gap-2">
+        <input type="text" id="sell_block" placeholder="Block" class="w-1/3 px-4 py-2 rounded-lg border text-sm outline-none">
+        <input type="text" id="sell_row" placeholder="Row" class="w-1/3 px-4 py-2 rounded-lg border text-sm outline-none">
+        <input type="text" id="sell_seat" placeholder="Seat #" class="w-1/3 px-4 py-2 rounded-lg border text-sm outline-none">
+    </div>
+    <p class="text-[9px] text-slate-400 mt-1">*Leave blank for unreserved/standing tickets.</p>
+</div>
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Price Per Ticket (£)</label>
                 <input type="number" id="sell_price" required placeholder="0.00" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
@@ -1945,6 +2039,11 @@ async handleSellTicket(e) {
     const ticketData = {
         title: document.getElementById('sell_title').value,
         category: document.getElementById('sell_category').value,
+        entry_type: document.getElementById('sell_entry_type').value,
+    seating_type: document.getElementById('sell_seating_type').value,
+    block: document.getElementById('sell_block').value,
+    row: document.getElementById('sell_row').value,
+    seat_number: document.getElementById('sell_seat').value,
         price: document.getElementById('sell_price').value,
         quantity: document.getElementById('sell_quantity').value, 
         notes: document.getElementById('sell_notes').value,       
@@ -2252,6 +2351,36 @@ async handleResetSubmit(token) {
         alert(result.message);
     }
 }
+showBookingConfirmation(event) {
+    const html = `
+    <div class="text-center p-2">
+        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-question text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-2">Booking Confirmation</h3>
+        <p class="text-sm text-slate-500 mb-6">Did you successfully book your tickets for <br><strong>${event.title}</strong>?</p>
+        
+        <div class="flex gap-3">
+            <button onclick="app.confirmBookingStatus(true, '${event.id}')" 
+                class="flex-1 bg-emerald-900 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition-all">
+                Yes, Booked
+            </button>
+            <button onclick="app.confirmBookingStatus(false, '${event.id}')" 
+                class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all">
+                No, Not Yet
+            </button>
+        </div>
+    </div>
+    `;
+
+    document.getElementById('modalTitle').innerText = "Boqkit Help";
+    document.getElementById('modalMessage').innerHTML = html;
+    
+    // Modal-ai kaatta
+    const modal = document.getElementById('modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
 }
 window.app = new BoqkitApp();
 console.log("⚡ Boqkit Optimized App Loaded");
@@ -2306,7 +2435,7 @@ console.log("⚡ Boqkit Optimized App Loaded");
 
         <div class="border-t border-emerald-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p class="text-emerald-500 text-[10px] uppercase tracking-widest">
-                © 2026 BOQKIT LTD. REGISTERED IN ENGLAND & WALES.
+                © 2026 BOQKIT LTD. 
             </p>
             <div class="flex gap-4 opacity-50 grayscale hover:grayscale-0 transition-all">
                 <i class="fa-brands fa-cc-visa text-2xl"></i>
