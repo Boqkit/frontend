@@ -237,6 +237,10 @@
     <div class="flex-grow border-t border-slate-200"></div>
 </div>
 <div id="googleBtnContainer" class="flex justify-center w-full min-h-[40px]"></div>
+<button type="button" onclick="app.loginWithFacebook()" class="w-full flex items-center justify-center gap-3 bg-[#1877F2] text-white py-3 rounded-xl font-bold hover:bg-[#166fe5] transition-all mt-3">
+    <i class="fa-brands fa-facebook text-xl"></i>
+    Continue with Facebook
+</button>
 
             </form>
            
@@ -348,6 +352,7 @@ class BoqkitApp {
         };
         this.init();
         this.initGoogleAuth();
+        this.initFacebookAuth();
         setInterval(() => this.checkUserStatus(), 5000);
     }
     async init() {
@@ -2380,6 +2385,68 @@ showBookingConfirmation(event) {
     const modal = document.getElementById('modal');
     modal.classList.remove('hidden');
     setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+initFacebookAuth() {
+    // 1. Define the callback that Facebook calls once the SDK is ready
+    window.fbAsyncInit = () => {
+        FB.init({
+            appId      : '881770591361435', // Your App ID from screenshot
+            cookie     : true,
+            xfbml      : true,
+            version    : 'v18.0'
+        });
+        console.log("✅ Facebook SDK Initialized Successfully");
+    };
+
+    // 2. Load the SDK script tag dynamically
+    (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+}
+
+async loginWithFacebook() {
+    // Check if SDK exists
+    if (typeof FB === 'undefined') {
+        this.showModal("Error", "Facebook SDK is still loading or blocked by an Ad-blocker. Please refresh or disable blockers.", "error");
+        return;
+    }
+
+    FB.login((response) => {
+        if (response.authResponse) {
+            console.log("FB Login Success, sending token to backend...");
+            this.handleFacebookResponse(response.authResponse.accessToken);
+        } else {
+            this.showModal("Auth Failed", "User cancelled login or did not fully authorize.", "error");
+        }
+    }, {scope: 'public_profile,email'});
+}
+
+async handleFacebookResponse(accessToken) {
+    try {
+        const res = await fetch(`${API_URL}/auth/facebook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            this.state.isLoggedIn = true;
+            this.state.user = data.user;
+            localStorage.setItem('boqkit_token', data.token);
+            localStorage.setItem('boqkit_user', JSON.stringify(data.user));
+            this.updateNavAuth();
+            this.closeAuthModal();
+            this.showModal("Success", `Welcome back, ${data.user.fullname}!`, "success");
+        } else {
+            this.showModal("Login Error", data.message, "error");
+        }
+    } catch (error) {
+        this.showModal("Error", "Could not connect to Boqkit server.", "error");
+    }
 }
 }
 window.app = new BoqkitApp();
