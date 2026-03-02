@@ -356,41 +356,49 @@ class BoqkitApp {
         setInterval(() => this.checkUserStatus(), 5000);
     }
     async init() {
-        const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.search);
     const resetToken = params.get('token');
+    const eventId = params.get('event'); 
+
     if (resetToken) {
         this.showResetPasswordUI(resetToken);
         return;
     }
 
-        const token = localStorage.getItem('boqkit_token');
-        const userData = localStorage.getItem('boqkit_user');
-        const toDateInput = document.getElementById('toDateInput');
-        
-        if (toDateInput) {
-            toDateInput.min = new Date().toISOString().split('T')[0];
-        }
-
-        if (token && userData) {
-            this.state.isLoggedIn = true;
-            this.state.user = JSON.parse(userData);
-            this.updateNavAuth();
-        }
-
-        // 3. Browser Back Button Listener
-        window.addEventListener('popstate', (event) => {
-            this.handlePopState(event);
-        });
-
-        this.readStateFromURL();
-        await this.fetchEvents();
-        document.addEventListener('click', (e) => {
-            const box = document.getElementById('searchSuggestions');
-            if (box && !e.target.closest('#searchInput') && !e.target.closest('#searchSuggestions')) {
-                box.classList.add('hidden');
-            }
-        });
+    const token = localStorage.getItem('boqkit_token');
+    const userData = localStorage.getItem('boqkit_user');
+    const toDateInput = document.getElementById('toDateInput');
+    
+    if (toDateInput) {
+        toDateInput.min = new Date().toISOString().split('T')[0];
     }
+
+    if (token && userData) {
+        this.state.isLoggedIn = true;
+        this.state.user = JSON.parse(userData);
+        this.updateNavAuth();
+    }
+
+    // 3. Browser Back Button Listener
+    window.addEventListener('popstate', (event) => {
+        this.handlePopState(event);
+    });
+
+    this.readStateFromURL();
+    
+    await this.fetchEvents();
+
+    if (eventId) {
+        this.openDetail(eventId);
+    }
+
+    document.addEventListener('click', (e) => {
+        const box = document.getElementById('searchSuggestions');
+        if (box && !e.target.closest('#searchInput') && !e.target.closest('#searchSuggestions')) {
+            box.classList.add('hidden');
+        }
+    });
+}
     async fetchUserLikes() {
     if (!this.state.isLoggedIn) return;
     try {
@@ -1340,6 +1348,12 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     
     return `
     <div onclick="app.openDetail('${event.id}')" class="event-card bg-white rounded-2xl overflow-hidden shadow-sm cursor-pointer relative h-full flex flex-col">
+        <div class="absolute top-12 right-3 z-20">
+    <button onclick="app.openShareModal(event, '${event.id}', '${event.title.replace(/'/g, "\\'")}')" 
+            class="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-md transition-all hover:bg-emerald-50">
+        <i class="fa-solid fa-share-nodes text-slate-600"></i>
+    </button>
+</div>
         
         <div class="relative h-56 md:h-52 bg-slate-200 overflow-hidden shrink-0">
             <img src="${event.image}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
@@ -1535,6 +1549,7 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
                 <div class="flex flex-col sm:flex-row gap-4 border-t pt-8">
                     ${actionButton}
                 </div>
+                
             </div>
         </div>
     </div>`;
@@ -2447,6 +2462,47 @@ async handleFacebookResponse(accessToken) {
     } catch (error) {
         this.showModal("Error", "Could not connect to Boqkit server.", "error");
     }
+}
+openShareModal(e, eventId, eventTitle) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    const shareUrl = `${window.location.origin}${window.location.pathname}?event=${eventId}`;
+    const encodedUrl = encodeURIComponent(shareUrl);
+    const encodedTitle = encodeURIComponent(`Check out this event on boqkit: ${eventTitle}`);
+
+    const html = `
+        <div class="grid grid-cols-2 gap-4 p-4">
+            <a href="https://api.whatsapp.com/send?text=${encodedTitle}%20${encodedUrl}" target="_blank" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-all">
+                <i class="fa-brands fa-whatsapp text-3xl text-green-500"></i>
+                <span class="text-xs font-bold">WhatsApp</span>
+            </a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}" target="_blank" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-all">
+                <i class="fa-brands fa-facebook text-3xl text-blue-600"></i>
+                <span class="text-xs font-bold">Facebook</span>
+            </a>
+            <a href="https://www.instagram.com/" target="_blank" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-all">
+                <i class="fa-brands fa-instagram text-3xl text-pink-600"></i>
+                <span class="text-xs font-bold">Instagram</span>
+            </a>
+            <button onclick="app.copyToClipboard('${shareUrl}')" class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-slate-50 transition-all">
+                <i class="fa-solid fa-link text-3xl text-slate-600"></i>
+                <span class="text-xs font-bold">Copy URL</span>
+            </button>
+        </div>
+    `;
+
+    this.showModal("Share Event", html, "info");
+}
+
+copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Link copied to clipboard!");
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
 }
 }
 window.app = new BoqkitApp();
