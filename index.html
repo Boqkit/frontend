@@ -57,6 +57,9 @@
 #sideMenu:not(.hidden) > div:last-child {
     transform: translateX(0);
 }
+nav.hidden {
+    display: none !important;
+}
 </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
@@ -151,9 +154,7 @@
             <button onclick="app.goHome(true); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
                 <i class="fa-solid fa-house w-6"></i> Home
             </button>
-            <button onclick="app.openSellTicketPage(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
-    <i class="fa-solid fa-tags w-6 text-emerald-600"></i> Sell Tickets
-</button>
+           
             <button onclick="app.openHistoryPage('booking'); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
                 <i class="fa-solid fa-ticket w-6"></i> My Tickets
             </button>
@@ -163,9 +164,7 @@
             <button onclick="app.openHistoryPage('view'); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
                 <i class="fa-solid fa-clock-rotate-left w-6"></i> History
             </button>
-            <button onclick="app.openUserSalesStatus(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
-    <i class="fa-solid fa-clipboard-list w-6 text-blue-600"></i> Sell Ticket Status
-</button>
+            
             <button onclick="app.showAccountInfo(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
                 <i class="fa-solid fa-user-gear w-6"></i> Account
             </button>
@@ -237,9 +236,10 @@
     <div class="flex-grow border-t border-slate-200"></div>
 </div>
 <div id="googleBtnContainer" class="flex justify-center w-full min-h-[40px]"></div>
-<button type="button" onclick="app.loginWithFacebook()" class="w-full flex items-center justify-center gap-3 bg-[#1877F2] text-white py-3 rounded-xl font-bold hover:bg-[#166fe5] transition-all mt-3">
-    <i class="fa-brands fa-facebook text-xl"></i>
-    Continue with Facebook
+<button type="button" onclick="app.loginWithFacebook()" 
+    class="w-full max-w-[350px] mx-auto flex items-center justify-center gap-3 bg-white text-slate-700 py-2.5 rounded-full font-medium border border-slate-300 hover:bg-slate-50 transition-all mt-3 shadow-sm">
+    <i class="fa-brands fa-facebook text-[#1877F2] text-xl"></i>
+    <span class="text-sm">Continue with Facebook</span>
 </button>
 
             </form>
@@ -313,7 +313,8 @@
 </div>
 <script>
 // CONFIG - POINTING TO LOCALHOST BACKEND
-const API_URL = "https://api.boqkit.com/api";
+const API_URL = "http://192.168.1.164:5001/api";
+let searchTimeout;
 const elements = {
     root: document.getElementById('app-root'),
     search: document.getElementById('searchInput'),
@@ -354,50 +355,56 @@ class BoqkitApp {
         this.initGoogleAuth();
         this.initFacebookAuth();
         setInterval(() => this.checkUserStatus(), 5000);
+        document.addEventListener('click', (e) => {
+            const box = document.getElementById('searchSuggestions');
+            if (box && !e.target.closest('#searchInput') && !e.target.closest('#searchSuggestions')) {
+                box.classList.add('hidden');
+            }
+        });
     }
     async init() {
     const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event');
     const resetToken = params.get('token');
-    const eventId = params.get('event'); 
 
-    if (resetToken) {
-        this.showResetPasswordUI(resetToken);
-        return;
-    }
+    if (resetToken) { this.showResetPasswordUI(resetToken); return; }
 
+    // Auth State
     const token = localStorage.getItem('boqkit_token');
     const userData = localStorage.getItem('boqkit_user');
-    const toDateInput = document.getElementById('toDateInput');
-    
-    if (toDateInput) {
-        toDateInput.min = new Date().toISOString().split('T')[0];
-    }
-
     if (token && userData) {
         this.state.isLoggedIn = true;
         this.state.user = JSON.parse(userData);
         this.updateNavAuth();
     }
 
-    // 3. Browser Back Button Listener
-    window.addEventListener('popstate', (event) => {
-        this.handlePopState(event);
-    });
-
-    this.readStateFromURL();
-    
+    // 1. First, fetch normal events
     await this.fetchEvents();
 
+    // 2. Handle Deep Link (Shared Link)
     if (eventId) {
-        this.openDetail(eventId);
-    }
-
-    document.addEventListener('click', (e) => {
-        const box = document.getElementById('searchSuggestions');
-        if (box && !e.target.closest('#searchInput') && !e.target.closest('#searchSuggestions')) {
-            box.classList.add('hidden');
+        let found = this.state.events.find(e => String(e.id) === String(eventId));
+        
+        if (found) {
+            this.openDetail(eventId);
+        } else if (eventId.startsWith('tm_')) {
+            try {
+                const res = await fetch(`${API_URL}/event/${eventId}`);
+                const result = await res.json();
+                if (result.status === 'success') {
+                    this.state.selectedEvent = result.data;
+                    this.state.screen = 'detail';
+                    this.render();
+                }
+            } catch (e) {
+                console.error("Deep link fetch failed", e);
+                this.goHome(false);
+            }
         }
-    });
+    }
+    
+    // Browser Back Button
+    window.addEventListener('popstate', (e) => this.handlePopState(e));
 }
     async fetchUserLikes() {
     if (!this.state.isLoggedIn) return;
@@ -420,13 +427,11 @@ class BoqkitApp {
             callback: this.handleGoogleResponse.bind(this)
         });
 
-        // Login Page-ukkana Button
         google.accounts.id.renderButton(
             document.getElementById("googleBtnContainer"),
             { theme: "outline", size: "large", width: "350", shape: "pill", text: "signin_with" } 
         );
 
-        // Sign Up Page-ukkana Button (Idhai add pannunga)
         google.accounts.id.renderButton(
             document.getElementById("googleBtnContainerSignup"),
             { theme: "outline", size: "large", width: "350", shape: "pill", text: "signup_with" } 
@@ -459,21 +464,30 @@ async handleGoogleResponse(response) {
 }
     // Handle Back Button
     handlePopState(event) {
-        if (event.state) {
-            this.state.screen = event.state.screen || 'home';
-            this.state.activeCategory = event.state.category || '';
-            this.state.activeSubCategory = event.state.subCategory || '';
-            this.state.selectedEvent = event.state.selectedEvent || null;
-            if (this.state.screen === 'home') {
-                this.render();
-                if (this.state.events.length === 0) this.fetchEvents();
-            } else if (this.state.screen === 'detail') {
+    this.state.loading = false; 
+
+    if (event.state) {
+        this.state.screen = event.state.screen || 'home';
+        this.state.activeCategory = event.state.category || '';
+        this.state.activeSubCategory = event.state.subCategory || '';
+        this.state.selectedEvent = event.state.selectedEvent || null;
+        
+        if (this.state.screen === 'home') {
+            const mainNav = document.querySelector('nav.sticky');
+            if (mainNav) mainNav.classList.remove('hidden');
+            
+            if (this.state.events.length === 0) {
+                this.fetchEvents();
+            } else {
                 this.render();
             }
-        } else {
-            this.goHome(false);
+        } else if (this.state.screen === 'detail') {
+            this.render();
         }
+    } else {
+        this.goHome(false);
     }
+}
     readStateFromURL() {
         const params = new URLSearchParams(window.location.search);
         this.state.activeCategory = params.get('category') || '';
@@ -678,21 +692,16 @@ async handleGoogleResponse(response) {
     } catch (e) { console.error("Tracking failed"); }
 
     if (this.state.isLoggedIn) {
-        // Step A: Vera window-la ticket website-ai thirakkavum
         window.open(url, '_blank');
 
-        // Step B: User thirumba Boqkit-kku varum pothu notification kaatta listener
         const checkReturn = () => {
-            // User thirumba intha tab-kku vanthuttaaraa?
             this.showBookingConfirmation(event);
             window.removeEventListener('focus', checkReturn);
         };
 
-        // User thirumba varum pothu (focus) confirmation modal-ai kaattum
         setTimeout(() => {
             window.addEventListener('focus', checkReturn);
-        }, 2000); // 2 seconds gap user website-kku pona piragu
-
+        }, 2000); 
     } else {
         this.state.pendingBookingUrl = url;
         this.openAuthModal('login');
@@ -992,7 +1001,9 @@ if (lowerKeyword.includes('indian') || lowerKeyword.includes('bollywood') || low
 // =====================================================
     // SMART SEARCH SUGGESTIONS
     // =====================================================
-showSuggestions(query) {
+// SMART SEARCH SUGGESTIONS (High Performance & Fast)
+    // 1. CLEAR AND FETCH NEW SUGGESTIONS (The Final Fix)
+    async showSuggestions(query) {
         const box = document.getElementById('searchSuggestions');
         if (!box) return;
 
@@ -1001,61 +1012,128 @@ showSuggestions(query) {
             return;
         }
 
-        let suggestions = [];
         const lowerQuery = query.toLowerCase();
         
-        // 1. Categories Suggestion
-        const categories = ["Football", "Cricket", "Cinema", "Comedy", "Theatre", "Music", "Concert", "Racing", "Boxing", "Wrestling", "Basketball"];
-        categories.forEach(cat => {
-            if (cat.toLowerCase().includes(lowerQuery)) {
-                suggestions.push({ type: 'category', text: cat });
-            }
-        });
+        // IMMEDIATE ACTION: Clear the box and show loading
+        box.innerHTML = `<div class="p-4 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Searching...</div>`;
+        box.classList.remove('hidden');
 
-        // 2. INSTANT Event Titles Suggestion (Already loaded events-la irunthu fast ah thedum)
-        if (this.state.events && this.state.events.length > 0) {
-            const matchedEvents = this.state.events.filter(e => 
-                (e.title && e.title.toLowerCase().includes(lowerQuery)) || 
-                (e.category && e.category.toLowerCase().includes(lowerQuery)) ||
-                (e.sport_type && e.sport_type.toLowerCase().includes(lowerQuery))
-            );
+        // Debounce to prevent server overload
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            try {
+                // Fetch fresh data directly from your backend API
+                const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+                const result = await res.json();
+                
+                let suggestions = [];
 
-            // Top 6 match aagura events-a mattum edukkum
-            matchedEvents.slice(0, 6).forEach(event => {
-                if (!suggestions.some(s => s.text === event.title)) {
-                    suggestions.push({ type: 'event', text: event.title, id: event.id });
+
+try {
+    const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+    const result = await res.json();
+    
+    box.innerHTML = ''; 
+
+    if (result.status === 'success' && result.data.length > 0) {
+        this.renderSuggestionsUI(result.data.map(event => ({
+            type: 'event',
+            text: event.title,
+            id: event.id,
+            is_live: true
+        })));
+    } else {
+        box.innerHTML = `<div class="p-3 text-xs text-slate-400">No events found</div>`;
+    }
+} catch (e) {
+    console.error("Fetch error:", e);
+    box.innerHTML = `<div class="p-3 text-xs text-red-400">Server connect aagala! Check Flask.</div>`;
+}    
+
+                // PRIORITY 1: Real-time API Results (Ticketmaster, etc.)
+                if (result.status === 'success' && result.data && result.data.length > 0) {
+                    result.data.slice(0, 8).forEach(event => {
+                        suggestions.push({ 
+                            type: 'event', 
+                            text: event.title, 
+                            id: event.id,
+                            is_live: true // Marker for live API data
+                        });
+                    });
                 }
-            });
-        }
 
-        // Render HTML for dropdown (Instanta display aagum)
-        if (suggestions.length > 0) {
-            box.innerHTML = suggestions.map(s => `
-                <div onclick="app.selectSuggestion('${s.text.replace(/'/g, "\\'")}', '${s.id || ''}')" 
-                     class="px-4 py-3 hover:bg-slate-100 cursor-pointer text-xs sm:text-sm text-slate-800 flex items-center gap-3 border-b border-slate-100 last:border-0 transition-all">
-                    <i class="fa-solid ${s.type === 'category' ? 'fa-magnifying-glass text-slate-400' : 'fa-ticket text-emerald-600'}"></i>
-                    <span class="truncate font-bold">${s.text}</span>
+                // PRIORITY 2: Match against common Categories
+                const categories = ["Football", "Cricket", "Cinema", "Theatre", "Music", "Concert", "Racing"];
+                categories.forEach(cat => {
+                    if (cat.toLowerCase().includes(lowerQuery)) {
+                        // Avoid duplicates if already added by API
+                        if (!suggestions.some(s => s.text === cat)) {
+                            suggestions.push({ type: 'category', text: cat });
+                        }
+                    }
+                });
+
+                // Final check: If nothing found at all
+                if (suggestions.length === 0) {
+                    box.innerHTML = `<div class="px-4 py-3 text-xs text-slate-400 text-center">No results found for "${query}"</div>`;
+                } else {
+                    this.renderSuggestionsUI(suggestions);
+                }
+            } catch (e) {
+                console.error("Suggestion fetch failed", e);
+                box.innerHTML = `<div class="px-4 py-3 text-xs text-red-400 text-center">Search error. Try again.</div>`;
+            }
+        }, 350); 
+    }
+
+    // 2. RENDER THE FILTERED DROPDOWN
+    renderSuggestionsUI(suggestions) {
+        const box = document.getElementById('searchSuggestions');
+        if (!box) return;
+
+        box.innerHTML = suggestions.map(s => `
+            <div onclick="app.selectSuggestion('${s.text.replace(/'/g, "\\'")}', '${s.id || ''}')" 
+                 class="px-4 py-3 hover:bg-slate-100 cursor-pointer text-xs sm:text-sm text-slate-800 flex items-center gap-3 border-b border-slate-100 last:border-0 transition-all">
+                <i class="fa-solid ${s.type === 'category' ? 'fa-magnifying-glass text-slate-400' : 'fa-ticket text-emerald-600'}"></i>
+                <div class="flex flex-col min-w-0">
+                    <span class="truncate font-bold text-slate-900">${s.text}</span>
+                    ${s.is_live ? '<span class="text-[9px] text-emerald-600 font-black uppercase tracking-tighter">Live Event</span>' : ''}
                 </div>
-            `).join('');
-            box.classList.remove('hidden');
-        } else {
-            box.innerHTML = `<div class="px-4 py-3 text-xs sm:text-sm text-slate-400 text-center">No matching events found</div>`;
-            box.classList.remove('hidden');
-        }
+            </div>
+        `).join('');
+        
+        box.classList.remove('hidden');
     }
     
 
-    selectSuggestion(text, eventId) {
-        const searchInput = document.getElementById('searchInput');
-        searchInput.value = text;
-        document.getElementById('searchSuggestions').classList.add('hidden');
+    async selectSuggestion(text, eventId) {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = text;
+    document.getElementById('searchSuggestions').classList.add('hidden');
+    
+    if (eventId) {
         
-        if (eventId) {
-            this.openDetail(eventId); 
-        } else {
+        try {
+            if (eventId.startsWith('tm_')) {
+                const res = await fetch(`${API_URL}/event/${eventId}`);
+                const result = await res.json();
+                if (result.status === 'success') {
+                    this.state.selectedEvent = result.data;
+                    this.state.screen = 'detail';
+                    this.updateHistory();
+                    this.render();
+                }
+            } else {
+                this.openDetail(eventId); 
+            }
+        } catch (e) {
+            console.error("Smart search selection failed", e);
             this.triggerSearch(); 
         }
+    } else {
+        this.triggerSearch(); 
     }
+}
     searchByLocation(city) {
         if (!city) return;
         elements.location.value = city;
@@ -1197,21 +1275,36 @@ locateMe() {
         this.fetchEvents('', '');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    goBack() { 
-        window.history.back(); 
-        document.querySelector('nav.sticky').classList.remove('nav-hidden');
-    window.history.back();
+    goBack() {
+    const mainNav = document.querySelector('nav.sticky');
+    if (mainNav) mainNav.classList.remove('hidden');
+    
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        this.goHome(true);
     }
-    openDetail(eventId) {
+}
+    async openDetail(eventId) {
     const event = this.state.events.find(e => String(e.id) === String(eventId));
+    
     if (event) {
         this.state.selectedEvent = event;
         this.state.screen = 'detail';
-        // Save to History when an event is clicked
-        document.querySelector('nav.sticky').classList.remove('nav-hidden');
         this.updateHistory(); 
         this.render();
         window.scrollTo(0,0);
+    } else if (eventId.startsWith('tm_')) {
+      
+        const res = await fetch(`${API_URL}/event/${eventId}`);
+        const result = await res.json();
+        if (result.status === 'success') {
+            this.state.selectedEvent = result.data;
+            this.state.screen = 'detail';
+            this.updateHistory();
+            this.render();
+            window.scrollTo(0,0);
+        }
     }
 }
     changePage(direction) {
@@ -1228,15 +1321,17 @@ locateMe() {
         elements.root.innerHTML = `<div class="flex flex-col items-center justify-center py-32 animate-fade-in"><div class="spinner mb-4"></div><p class="text-slate-500 font-medium">Finding events...</p></div>`;
         return;
     }
+
     const mainNav = document.querySelector('nav.sticky');
+
     if (this.state.screen === 'detail') {
         if (mainNav) {
-            mainNav.classList.add('hidden'); // Tailwind 'hidden' class 
+            mainNav.classList.add('hidden'); // This hides the green box
         }
         this.renderDetail();
     } else {
         if (mainNav) {
-            mainNav.classList.remove('hidden');
+            mainNav.classList.remove('hidden'); // This shows it on home
         }
         this.renderHome();
     }
@@ -1350,9 +1445,9 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     <div onclick="app.openDetail('${event.id}')" class="event-card bg-white rounded-2xl overflow-hidden shadow-sm cursor-pointer relative h-full flex flex-col">
         <div class="absolute top-12 right-3 z-20">
     <button onclick="app.openShareModal(event, '${event.id}', '${event.title.replace(/'/g, "\\'")}')" 
-            class="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-md transition-all hover:bg-emerald-50">
-        <i class="fa-solid fa-share-nodes text-slate-600"></i>
-    </button>
+        class="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg text-slate-700 hover:bg-white transition-all active:scale-90">
+    <i class="fa-solid fa-share-nodes pointer-events-none"></i>
+</button>
 </div>
         
         <div class="relative h-56 md:h-52 bg-slate-200 overflow-hidden shrink-0">
@@ -1445,11 +1540,12 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     if (!event) return this.goHome();
 
     // 1. --- HISTORY & TRACKING ---
-    // User entha event-ai paarkiraar-nu history-la save panrom
     this.addToViewHistory(event); 
 
-    // 2. --- DYNAMIC RELATED TICKETS ---
-    // User football-na football, movie-na movie tickets-ai mela kaatta filter logic
+    // 2. --- LIKE STATE CHECK ---
+    const isLiked = this.state.userLikes && this.state.userLikes.includes(event.id);
+
+    // 3. --- DYNAMIC RELATED TICKETS ---
     const relatedTickets = this.state.events
         .filter(e => (e.type === event.type || e.category === event.category) && e.id !== event.id)
         .slice(0, 6);
@@ -1474,7 +1570,7 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
         </div>`;
     }
 
-    // 3. --- DATE & STATUS LOGIC ---
+    // 4. --- DATE & STATUS LOGIC ---
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const evtDate = new Date(event.date);
@@ -1484,7 +1580,7 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     else if (diffDays === 1) daysLabel = "⚡ Tomorrow!";
     else if (diffDays > 1) daysLabel = `⏳ ${diffDays} Days Left`;
 
-    // 4. --- MULTIPLE SHOWTIMES LOGIC ---
+    // 5. --- MULTIPLE SHOWTIMES LOGIC ---
     let dateListHTML = '';
     if (event.has_multiple_dates && event.all_showtimes) {
         dateListHTML = `
@@ -1500,28 +1596,43 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
         </div>`;
     }
 
-    // 5. --- ACTION BUTTON LOGIC ---
+    // 6. --- ACTION BUTTON LOGIC ---
     const isMovie = event.type === 'cinema' || event.type === 'tamil' || event.type === 'indian';
-    const buttonColorClass = isMovie ? "bg-[#1167D8] hover:bg-[#0e56b2]" : "bg-emerald-600 hover:bg-emerald-700";
+    const buttonColorClass = isMovie ? "bg-[#1167D8] hover:bg-[#0e56b2]" : "bg-emerald-800 hover:bg-emerald-900";
     
     const actionButton = `
     <div class="flex-1 flex flex-col gap-2 w-full">
         ${daysLabel ? `<div class="text-center font-bold ${isMovie ? 'text-[#1167D8]' : 'text-emerald-700'} animate-pulse text-sm">${daysLabel}</div>` : ''}
         <button onclick="app.handleBooking('${event.booking_url}')"
-        class="w-full inline-flex items-center justify-center gap-2 ${buttonColorClass} text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:-translate-y-1 hover:shadow-xl">
+        class="w-full inline-flex items-center justify-center gap-2 ${buttonColorClass} text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all transform hover:-translate-y-1 hover:shadow-xl">
             <i class="fa-solid fa-external-link-alt"></i> Book Tickets Now
         </button>
     </div>`;
 
-    // 6. --- UI RENDER (FULL STRUCTURE) ---
+    // 7. --- UI RENDER (BANNER + FLOATING BUTTONS) ---
     elements.root.innerHTML = `
     <div class="animate-fade-in pb-10">
-        <button onclick="app.goBack()" class="flex items-center gap-2 text-slate-600 hover:text-emerald-700 font-semibold mb-6 transition-colors pl-4 pt-4">
-            <i class="fa-solid fa-arrow-left"></i> Back to Events
-        </button>
+        <div class="p-4">
+            <button onclick="app.goBack()" class="flex items-center gap-2 text-slate-600 hover:text-emerald-700 font-semibold transition-colors">
+                <i class="fa-solid fa-arrow-left"></i> Back to Events
+            </button>
+        </div>
+
         <div class="bg-white rounded-3xl shadow-xl overflow-hidden mx-4 mb-4">
             <div class="relative h-64 md:h-96 bg-slate-200">
                 <img src="${event.image}" class="w-full h-full object-cover img-optimized" alt="${event.title}" onerror="this.src='https://placehold.co/600x400?text=No+Image'">
+                
+                <div class="absolute top-4 right-4 z-30 flex flex-col gap-3">
+                    <button onclick="app.openShareModal(event, '${event.id}', '${event.title.replace(/'/g, "\\'")}')" 
+                            class="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg text-slate-700 hover:bg-white transition-all active:scale-90">
+                        <i class="fa-solid fa-share-nodes"></i>
+                    </button>
+                    <button onclick="app.handleLike(event, '${event.id}')" 
+                            class="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg transition-all active:scale-90">
+                        <i class="fa-solid fa-heart ${isLiked ? 'text-red-500' : 'text-slate-400'}"></i>
+                    </button>
+                </div>
+
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 <div class="absolute bottom-6 left-6 text-white w-[90%]">
                     <h1 class="text-2xl md:text-4xl font-extrabold mb-2 drop-shadow-lg">${event.title}</h1>
@@ -1531,6 +1642,7 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
                     </div>
                 </div>
             </div>
+
             <div class="p-6 md:p-10">
                 <div class="flex flex-wrap gap-4 mb-8 text-sm font-semibold">
                     <span class="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full"><i class="fa-regular fa-calendar mr-2"></i> ${event.date}</span>
@@ -1543,27 +1655,16 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
                 </p>
 
                 ${dateListHTML}
-
                 ${relatedHTML}
 
                 <div class="flex flex-col sm:flex-row gap-4 border-t pt-8">
                     ${actionButton}
                 </div>
-                
             </div>
         </div>
     </div>`;
 
-    // 7. --- STICKY NAV, CONTACT & BOTTOM NAV ---
-    const mainNav = document.querySelector('nav.sticky');
-    if (mainNav) mainNav.classList.remove('hidden');
-
-    // Contact details restore
-    if (typeof contactSection !== 'undefined') {
-        elements.root.innerHTML += contactSection;
-    }
-
-    // Bottom navigation bar restore
+    // 8. --- BOTTOM NAV RESTORE ---
     const mobileNav = document.querySelector('.mobile-nav');
     if (mobileNav) mobileNav.classList.remove('hidden');
 
@@ -1572,7 +1673,7 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     async handleLike(e, eventId) {
     if (e) {
         e.preventDefault();
-        e.stopPropagation(); // Prevents card click from triggering 
+        e.stopPropagation(); 
     }
     
     if (!this.state.isLoggedIn) {
@@ -1581,7 +1682,8 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     }
 
     const token = localStorage.getItem('boqkit_token');
-    const heartIcon = e.currentTarget.querySelector('i');
+    const btn = e.currentTarget;
+    const heartIcon = btn.querySelector('i');
 
     try {
         const res = await fetch(`${API_URL}/user/toggle-like`, {
@@ -1592,25 +1694,30 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
             },
             body: JSON.stringify({
                 event_id: eventId,
-                event_data: this.state.events.find(ev => ev.id === eventId) // Send ticket details 
+                event_data: this.state.events.find(ev => String(ev.id) === String(eventId))
             })
         });
 
         const result = await res.json();
 
         if (result.status === 'success') {
-            // Update UI without full reload 
             if (result.action === 'liked') {
-                heartIcon.classList.replace('text-slate-300', 'text-red-500');
-                heartIcon.classList.add('scale-110');
-                if(!this.state.userLikes.includes(eventId)) this.state.userLikes.push(eventId);
+                heartIcon.classList.remove('text-slate-300', 'text-slate-400');
+                heartIcon.classList.add('text-red-500', 'scale-110');
+                
+                if(!this.state.userLikes.includes(eventId)) {
+                    this.state.userLikes.push(eventId);
+                }
             } else {
-                heartIcon.classList.replace('text-red-500', 'text-slate-300');
-                heartIcon.classList.remove('scale-110');
+                heartIcon.classList.remove('text-red-500', 'scale-110');
+                
+                // Detail page-na slate-400, home card-na slate-300
+                const greyClass = this.state.screen === 'detail' ? 'text-slate-400' : 'text-slate-300';
+                heartIcon.classList.add(greyClass);
+                
                 this.state.userLikes = this.state.userLikes.filter(id => id !== eventId);
             }
             
-            // Refresh saved events page if currently viewing it
             if (this.state.screen === 'likes') {
                 this.openLikesPage();
             }
@@ -1911,318 +2018,8 @@ openModalUI() {
     document.body.classList.add('no-scroll');
     setTimeout(() => modal.classList.remove('opacity-0'), 10);
 }
-// 1. Sell Ticket Form (Price, Contact & Image URL)
-openSellTicketPage() {
-    if (!this.state.isLoggedIn) {
-        this.showModal("Login Required", "Please login to sell tickets.", "info");
-        this.openAuthModal('login');
-        return;
-    }
 
-    const html = `
-    <form onsubmit="app.handleSellTicket(event)" class="text-left space-y-4 max-h-[75vh] overflow-y-auto p-2 custom-scrollbar">
-        <div class="grid grid-cols-2 gap-4">
-            <div class="col-span-2">
-                <label class="block text-xs font-bold text-slate-700 mb-1">Ticket / Event Name</label>
-                <input type="text" id="sell_title" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none focus:border-emerald-500">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Category</label>
-                <select id="sell_category" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-                                <option value="ticket_category">Category Entry</option>
-                    <option value="cinema">Cinema</option>
-                    <option value="sports">Sports</option>
-                    <option value="music">Music</option>
-                    <option value="theatre">Theatre</option>
-                </select>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-    <div>
-        <label class="block text-xs font-bold text-slate-700 mb-1">Entry Type</label>
-        <select id="sell_entry_type" class="w-full px-4 py-2 rounded-lg border text-sm outline-none focus:border-emerald-500">
-            <option value="Standard">Standard Entry</option>
-            <option value="VIP">VIP Entry</option>
-            <option value="Early Bird">Early Bird</option>
-            <option value="Student/Senior">Discounted (Student/Senior)</option>
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs font-bold text-slate-700 mb-1">Seating Detail</label>
-        <select id="sell_seating_type" class="w-full px-4 py-2 rounded-lg border text-sm outline-none focus:border-emerald-500">
-            <option value="Seated">Allocated Seating</option>
-            <option value="Standing">Standing Only</option>
-            <option value="General Admission">General Admission (Unreserved)</option>
-        </select>
-    </div>
-</div>
 
-<div id="seat_details_group" class="mt-2">
-    <label class="block text-xs font-bold text-slate-700 mb-1">Seat Assignment (Optional)</label>
-    <div class="flex gap-2">
-        <input type="text" id="sell_block" placeholder="Block" class="w-1/3 px-4 py-2 rounded-lg border text-sm outline-none">
-        <input type="text" id="sell_row" placeholder="Row" class="w-1/3 px-4 py-2 rounded-lg border text-sm outline-none">
-        <input type="text" id="sell_seat" placeholder="Seat #" class="w-1/3 px-4 py-2 rounded-lg border text-sm outline-none">
-    </div>
-    <p class="text-[9px] text-slate-400 mt-1">*Leave blank for unreserved/standing tickets.</p>
-</div>
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Price Per Ticket (£)</label>
-                <input type="number" id="sell_price" required placeholder="0.00" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-            </div>
-        </div>
-        
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Number of Tickets</label>
-                <input type="number" id="sell_quantity" required min="1" value="1" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">City</label>
-                <input type="text" id="sell_city" required placeholder="e.g. London" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Date</label>
-                <input type="date" id="sell_date" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Time</label>
-                <input type="time" id="sell_time" required class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-            </div>
-        </div>
-
-        <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Contact (Email/Mobile)</label>
-            <input type="text" id="sell_contact" required placeholder="How should buyers reach you?" class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-        </div>
-
-        <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Ticket Image URL (Optional)</label>
-            <input type="url" id="sell_image" placeholder="https://..." class="w-full px-4 py-2 rounded-lg border text-sm outline-none">
-        </div>
-
-        <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Additional Notes</label>
-            <textarea id="sell_notes" placeholder="e.g. Row M, Seat 4..." class="w-full px-4 py-2 rounded-lg border text-sm outline-none h-20"></textarea>
-        </div>
-
-        <button type="submit" id="sellSubmitBtn" class="w-full bg-emerald-900 text-white py-3 rounded-xl font-bold hover:bg-emerald-800 transition-all">
-            List Ticket for Sale
-        </button>
-    </form>
-    `;
-    document.getElementById('modalTitle').innerText = "Sell Ticket";
-    document.getElementById('modalMessage').innerHTML = html;
-    this.openModalUI();
-}
-
-// 2. Edit Sale Function
-async editSale(listing_id) {
-    // 1. Fetch current data for this ID
-    const token = localStorage.getItem('boqkit_token');
-    const res = await fetch(`${API_URL}/user/get-sale/${listing_id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const result = await res.json();
-    const item = result.data;
-
-    // 2. Open form with existing values
-    this.openSellTicketPage(); // First open form
-    
-    // 3. Fill values
-    document.getElementById('sell_title').value = item.title;
-    document.getElementById('sell_category').value = item.category;
-    document.getElementById('sell_price').value = item.price;
-    document.getElementById('sell_date').value = item.date;
-    document.getElementById('sell_time').value = item.time;
-    document.getElementById('sell_city').value = item.city;
-    document.getElementById('sell_contact').value = item.contact;
-    document.getElementById('sell_image').value = item.image || '';
-
-    // Change form submit to update instead of create
-    const form = document.querySelector('#modalMessage form');
-    form.onsubmit = (e) => this.handleUpdateSale(e, listing_id);
-    document.querySelector('#modalMessage button').innerText = "Update Ticket Detail";
-}
-// 1. User Sales Status (Listing with Edit/Delete Buttons)
-// ✅ 1. Sell Ticket Form Submit Logic (Success Message handling)
-async handleSellTicket(e) {
-    e.preventDefault();
-    const btn = e.target.querySelector('button');
-    const originalBtnText = btn.innerText;
-    
-    btn.disabled = true;
-    btn.innerHTML = '<div class="spinner w-4 h-4 border-white inline-block"></div> Listing...';
-
-    const ticketData = {
-        title: document.getElementById('sell_title').value,
-        category: document.getElementById('sell_category').value,
-        entry_type: document.getElementById('sell_entry_type').value,
-    seating_type: document.getElementById('sell_seating_type').value,
-    block: document.getElementById('sell_block').value,
-    row: document.getElementById('sell_row').value,
-    seat_number: document.getElementById('sell_seat').value,
-        price: document.getElementById('sell_price').value,
-        quantity: document.getElementById('sell_quantity').value, 
-        notes: document.getElementById('sell_notes').value,       
-        date: document.getElementById('sell_date').value,
-        time: document.getElementById('sell_time').value,
-        city: document.getElementById('sell_city').value,
-        contact: document.getElementById('sell_contact').value,
-        image: document.getElementById('sell_image').value
-    };
-
-    try {
-        const token = localStorage.getItem('boqkit_token');
-        const res = await fetch(`${API_URL}/user/sell-ticket`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(ticketData)
-        });
-
-        const result = await res.json();
-        if (result.status === 'success') {
-            // ✅ Success Alert and Auto-refresh
-            this.showModal("Success!", "Your ticket has been listed for sale successfully.", "success");
-            
-            setTimeout(() => {
-                this.closeModal();
-                this.openUserSalesStatus(); 
-            }, 2000);
-        } else {
-            this.showModal("Error", result.message || "Failed to list ticket", "error");
-        }
-    } catch (err) {
-        console.error("Fetch error:", err);
-        this.showModal("Error", "Server connection failed", "error");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = originalBtnText;
-    }
-}
-
-// ✅ 2. Open User Sales Status (Listing with Edit/Delete)
-async openUserSalesStatus() {
-    if (!this.state.isLoggedIn) {
-        this.openAuthModal('login');
-        return;
-    }
-    
-    document.getElementById('modalTitle').innerText = "Sell Ticket Status";
-    document.getElementById('modalMessage').innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
-    this.openModalUI();
-
-    try {
-        const token = localStorage.getItem('boqkit_token');
-        const res = await fetch(`${API_URL}/user/my-sales`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const result = await res.json();
-
-        if (!result.data || result.data.length === 0) {
-            document.getElementById('modalMessage').innerHTML = `
-                <div class="py-10 text-center">
-                    <i class="fa-solid fa-folder-open text-4xl text-slate-200 mb-3"></i>
-                    <p class="text-slate-400">No tickets found in your sell list.</p>
-                    <button onclick="app.openSellTicketPage()" class="mt-4 text-emerald-700 font-bold text-sm underline">Sell a ticket now</button>
-                </div>`;
-            return;
-        }
-
-        let html = `<div class="space-y-3 max-h-[60vh] overflow-y-auto p-2 custom-scrollbar">`;
-        result.data.forEach(item => {
-            html += `
-                <div class="flex gap-4 p-3 bg-white rounded-xl border border-slate-200 text-left shadow-sm hover:border-emerald-500 transition-all">
-                    <img src="${item.image || 'https://placehold.co/100'}" class="w-14 h-14 rounded-lg object-cover bg-slate-50" onerror="this.src='https://placehold.co/100'">
-                    <div class="flex-1 min-w-0">
-                        <h4 class="font-bold text-xs truncate text-slate-800">${item.title}</h4>
-                        <div class="flex justify-between items-center mt-1">
-                            <span class="text-[10px] text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded">£${item.price}</span>
-                            <span class="text-[9px] font-bold uppercase text-slate-400">${item.status}</span>
-                        </div>
-                        <p class="text-[9px] text-slate-500 mt-1"><i class="fa-solid fa-location-dot"></i> ${item.city}</p>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="app.editSale('${item.listing_id}')" class="text-[10px] bg-slate-100 text-slate-600 px-3 py-1 rounded font-bold hover:bg-emerald-900 hover:text-white transition-all">Edit</button>
-                            <button onclick="app.deleteSale('${item.listing_id}')" class="text-[10px] bg-red-50 text-red-600 px-3 py-1 rounded font-bold hover:bg-red-600 hover:text-white transition-all">Delete</button>
-                        </div>
-                    </div>
-                </div>`;
-        });
-        html += `</div>`;
-        document.getElementById('modalMessage').innerHTML = html;
-    } catch (e) { 
-        document.getElementById('modalMessage').innerHTML = `<p class="text-red-500 text-xs py-10 text-center">Connection Error. Please try again.</p>`;
-    }
-}
-
-// 2. Handle Update (Sending edited data to Backend)
-async handleUpdateSale(e, listing_id) {
-    e.preventDefault();
-    const btn = e.target.querySelector('button');
-    btn.disabled = true;
-    btn.innerHTML = '<div class="spinner w-4 h-4 border-white"></div> Updating...';
-
-    const ticketData = {
-        title: document.getElementById('sell_title').value,
-        category: document.getElementById('sell_category').value,
-        price: document.getElementById('sell_price').value,
-        quantity: document.getElementById('sell_quantity').value, 
-        notes: document.getElementById('sell_notes').value,
-        date: document.getElementById('sell_date').value,
-        time: document.getElementById('sell_time').value,
-        city: document.getElementById('sell_city').value,
-        contact: document.getElementById('sell_contact').value,
-        image: document.getElementById('sell_image').value
-    };
-
-    try {
-        const token = localStorage.getItem('boqkit_token');
-        const res = await fetch(`${API_URL}/user/update-sale/${listing_id}`, {
-            method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(ticketData)
-        });
-
-        const result = await res.json();
-        if (result.status === 'success') {
-            this.showModal("Updated!", "Your ticket details have been updated.", "success");
-            setTimeout(() => this.openUserSalesStatus(), 1500); // Redirect back to list
-        } else {
-            this.showModal("Error", result.message, "error");
-        }
-    } catch (err) {
-        this.showModal("Error", "Server connection failed", "error");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Update Ticket Detail";
-    }
-}
-
-// 3. Delete Logic
-async deleteSale(id) {
-    if(!confirm("Are you sure you want to delete this listing?")) return;
-    try {
-        const token = localStorage.getItem('boqkit_token');
-        const res = await fetch(`${API_URL}/user/delete-sale/${id}`, { 
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const result = await res.json();
-        if(result.status === 'success') {
-            this.openUserSalesStatus(); // Refresh list
-        }
-    } catch (e) {
-        alert("Delete failed.");
-    }
-}
 showForgotPasswordUI() {
     const html = `
     <div class="space-y-4 p-2 text-left">
@@ -2464,7 +2261,7 @@ async handleFacebookResponse(accessToken) {
     }
 }
 openShareModal(e, eventId, eventTitle) {
-    if (e) {
+    if (e && e.stopPropagation) {
         e.preventDefault();
         e.stopPropagation();
     }
