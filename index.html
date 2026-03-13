@@ -1535,17 +1535,15 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     }
 
 
-    renderDetail() {
+renderDetail() {
     const event = this.state.selectedEvent;
     if (!event) return this.goHome();
 
-    // 1. --- HISTORY & TRACKING ---
     this.addToViewHistory(event); 
 
-    // 2. --- LIKE STATE CHECK ---
     const isLiked = this.state.userLikes && this.state.userLikes.includes(event.id);
 
-    // 3. --- DYNAMIC RELATED TICKETS ---
+    // Dynamic Related Tickets logic
     const relatedTickets = this.state.events
         .filter(e => (e.type === event.type || e.category === event.category) && e.id !== event.id)
         .slice(0, 6);
@@ -1553,7 +1551,7 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     let relatedHTML = '';
     if (relatedTickets.length > 0) {
         relatedHTML = `
-        <div class="mt-8 mb-4 animate-slide-up">
+        <div class="mt-8 mb-4 animate-slide-up border-t pt-6">
             <h4 class="text-sm font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
                 <i class="fa-solid fa-ticket text-emerald-600"></i> 
                 Recommended ${event.type === 'indian' ? 'Indian Movies' : 'Similar'} Tickets
@@ -1570,7 +1568,6 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
         </div>`;
     }
 
-    // 4. --- DATE & STATUS LOGIC ---
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const evtDate = new Date(event.date);
@@ -1580,7 +1577,6 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
     else if (diffDays === 1) daysLabel = "⚡ Tomorrow!";
     else if (diffDays > 1) daysLabel = `⏳ ${diffDays} Days Left`;
 
-    // 5. --- MULTIPLE SHOWTIMES LOGIC ---
     let dateListHTML = '';
     if (event.has_multiple_dates && event.all_showtimes) {
         dateListHTML = `
@@ -1596,7 +1592,6 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
         </div>`;
     }
 
-    // 6. --- ACTION BUTTON LOGIC ---
     const isMovie = event.type === 'cinema' || event.type === 'tamil' || event.type === 'indian';
     const buttonColorClass = isMovie ? "bg-[#1167D8] hover:bg-[#0e56b2]" : "bg-emerald-800 hover:bg-emerald-900";
     
@@ -1609,7 +1604,6 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
         </button>
     </div>`;
 
-    // 7. --- UI RENDER (BANNER + FLOATING BUTTONS) ---
     elements.root.innerHTML = `
     <div class="animate-fade-in pb-10">
         <div class="p-4">
@@ -1655,16 +1649,16 @@ const cinemaCats = ['Indian Movies', 'Action', 'Comedy', 'Horror', 'Family', 'Sc
                 </p>
 
                 ${dateListHTML}
-                ${relatedHTML}
 
                 <div class="flex flex-col sm:flex-row gap-4 border-t pt-8">
                     ${actionButton}
                 </div>
+
+                ${relatedHTML}
             </div>
         </div>
     </div>`;
 
-    // 8. --- BOTTOM NAV RESTORE ---
     const mobileNav = document.querySelector('.mobile-nav');
     if (mobileNav) mobileNav.classList.remove('hidden');
 
