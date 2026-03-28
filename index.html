@@ -124,7 +124,7 @@ nav.hidden {
         <i class="fa-solid fa-house text-xl"></i>
         <span class="text-[10px] font-bold">Home</span>
     </button>
-   <button onclick="app.fetchUserActivity('tickets')" class="flex flex-col items-center gap-1 w-1/4 text-slate-500 transition-transform active:scale-90">
+   <button onclick="app.showMyTickets()" class="flex flex-col items-center gap-1 w-1/4 text-slate-500 transition-transform active:scale-90">
     <i class="fa-solid fa-ticket text-xl"></i>
     <span class="text-[10px] font-bold">Tickets</span>
 </button>
@@ -155,9 +155,13 @@ nav.hidden {
                 <i class="fa-solid fa-house w-6"></i> Home
             </button>
            
-            <button onclick="app.openHistoryPage('booking'); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
-                <i class="fa-solid fa-ticket w-6"></i> My Tickets
-            </button>
+            <button onclick="app.showMyTickets(); app.toggleSidebar();" 
+        class="w-full flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl transition-all group">
+    <i class="fa-solid fa-ticket w-6 text-slate-500 group-hover:text-emerald-600"></i>
+    <span class="text-sm font-bold text-slate-700 group-hover:text-emerald-900">
+        My Tickets
+    </span>
+</button>
             <button onclick="app.openLikesPage(); app.toggleSidebar()" class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl font-bold text-slate-700">
     <i class="fa-solid fa-heart w-6 text-red-500"></i> My Saved Events
 </button>
@@ -2316,6 +2320,102 @@ copyToClipboard(text) {
     }).catch(err => {
         console.error('Failed to copy: ', err);
     });
+}
+async showMyTickets() {
+    // 1. User login pannala-na login modal-ai kaatta
+    if (!this.state.isLoggedIn) {
+        this.showLoginUI();
+        return;
+    }
+
+    // Modal-il loading message-ai kaatta
+    this.showModal("My Tickets", "Loading tickets...", "info");
+
+    try {
+        const token = localStorage.getItem('boqkit_token');
+        const res = await fetch(`${API_URL}/tickets/my-tickets`, {
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' 
+            }
+        });
+        const data = await res.json();
+
+        if (data.status === 'success' && data.tickets && data.tickets.length > 0) {
+            // 2. Ticket-gal irunthaal athai render seiya
+            let ticketsHtml = `<div class="space-y-4 p-2">`;
+            data.tickets.forEach(ticket => {
+                ticketsHtml += `
+                    <div class="border rounded-2xl p-4 bg-slate-50 relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-bold text-emerald-900">${ticket.event_title}</h4>
+                                <p class="text-xs text-slate-500">${ticket.event_date}</p>
+                            </div>
+                            <span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase">
+                                ${ticket.status}
+                            </span>
+                        </div>
+                        <div class="border-t border-dashed border-slate-300 my-2 pt-2">
+                            <p class="text-[10px] text-slate-400">Booking ID: ${ticket.booking_id}</p>
+                            <p class="text-sm font-bold text-slate-700">Qty: ${ticket.quantity}</p>
+                        </div>
+                        <div class="absolute right-[-10px] bottom-[-10px] opacity-10">
+                            <i class="fa-solid fa-ticket text-5xl transform -rotate-12"></i>
+                        </div>
+                    </div>`;
+            });
+            ticketsHtml += `</div>`;
+            
+            document.getElementById('modalMessage').innerHTML = ticketsHtml;
+        } else {
+            // 3. Ticket book pannala-na "No Tickets" message-ai kaatta
+            const noTicketsHtml = `
+                <div class="text-center py-10">
+                    <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-ticket-simple text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-700">No Tickets Found</h3>
+<p class="text-sm text-slate-500 mb-6">You haven't booked any tickets yet.</p>                    <button onclick="app.closeModalUI()" class="bg-emerald-900 text-white px-6 py-2 rounded-xl text-sm font-bold">
+                        Browse Events
+                    </button>
+                </div>
+            `;
+            document.getElementById('modalMessage').innerHTML = noTicketsHtml;
+        }
+    } catch (error) {
+        this.showModal("Error", "Tickets-ai fetch seiya mudiyavillai.", "error");
+    }
+}
+async trackVisitor() {
+    try {
+        const visitorData = {
+            url: window.location.href,
+            userAgent: navigator.userAgent, // Device details
+            screenSize: `${window.screen.width}x${window.screen.height}`,
+            referrer: document.referrer || 'Direct'
+        };
+
+        await fetch(`${API_URL}/analytics/track`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(visitorData)
+        });
+    } catch (err) {
+        console.log("Tracking blocked by browser/ad-blocker");
+    }
+}
+showSection(sectionId) {
+    document.getElementById('dashboard-stats').classList.add('hidden');
+    document.getElementById('visit-user-section').classList.add('hidden');
+    
+    if(sectionId === 'visit-user') {
+        document.getElementById('visit-user-section').classList.remove('hidden');
+        this.loadVisitorData(); 
+    } else {
+        document.getElementById('dashboard-stats').classList.remove('hidden');
+    }
 }
 }
 window.app = new BoqkitApp();
