@@ -60,6 +60,10 @@
 nav.hidden {
     display: none !important;
 }
+.star-rating { display: flex; flex-direction: row-reverse; justify-content: center; gap: 10px; }
+.star-rating input { display: none; }
+.star-rating label { font-size: 30px; color: #cbd5e1; cursor: pointer; transition: color 0.2s; }
+.star-rating input:checked ~ label, .star-rating label:hover, .star-rating label:hover ~ label { color: #fbbf24; }
 </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 min-h-screen">
@@ -1597,8 +1601,7 @@ renderDetail() {
     }
 
     const isMovie = event.type === 'cinema' || event.type === 'tamil' || event.type === 'indian';
-    const buttonColorClass = isMovie ? "bg-[#1167D8] hover:bg-[#0e56b2]" : "bg-emerald-800 hover:bg-emerald-900";
-    
+const buttonColorClass = "bg-emerald-800 hover:bg-emerald-900";    
     const actionButton = `
     <div class="flex-1 flex flex-col gap-2 w-full">
         ${daysLabel ? `<div class="text-center font-bold ${isMovie ? 'text-[#1167D8]' : 'text-emerald-700'} animate-pulse text-sm">${daysLabel}</div>` : ''}
@@ -2417,6 +2420,83 @@ showSection(sectionId) {
         document.getElementById('dashboard-stats').classList.remove('hidden');
     }
 }
+showFeedbackForm() {
+    // Check if user is logged in before showing the form
+    if (!this.state.isLoggedIn) {
+        this.openAuthModal('login');
+        return;
+    }
+
+    const html = `
+        <div class="space-y-6 p-2 text-center">
+            <p class="text-sm text-slate-500 font-medium">We value your opinion! Please share your experience with us.</p>
+            
+            <div class="star-rating">
+                <input type="radio" id="star5" name="rating" value="5"><label for="star5" class="fa-solid fa-star"></label>
+                <input type="radio" id="star4" name="rating" value="4"><label for="star4" class="fa-solid fa-star"></label>
+                <input type="radio" id="star3" name="rating" value="3"><label for="star3" class="fa-solid fa-star"></label>
+                <input type="radio" id="star2" name="rating" value="2"><label for="star2" class="fa-solid fa-star"></label>
+                <input type="radio" id="star1" name="rating" value="1"><label for="star1" class="fa-solid fa-star"></label>
+            </div>
+
+            <div class="text-left">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 ml-1">Your Message</label>
+                <textarea id="feedbackMsg" rows="4" 
+                    class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all" 
+                    placeholder="Describe your experience here..."></textarea>
+            </div>
+
+            <button onclick="app.submitFeedback()" 
+                class="w-full bg-emerald-900 text-white py-4 rounded-2xl font-bold hover:bg-emerald-800 shadow-lg transform active:scale-95 transition-all">
+                Submit Feedback
+            </button>
+        </div>
+    `;
+    this.showModal("Rate Your Experience", html, "info");
+}
+
+// Send Feedback to Backend
+async submitFeedback() {
+    const token = localStorage.getItem('boqkit_token');
+
+    if (!this.state.isLoggedIn || !token) {
+        this.closeModal(); 
+        this.openAuthModal('login'); 
+        return;
+    }
+
+    const rating = document.querySelector('input[name="rating"]:checked')?.value;
+    const message = document.getElementById('feedbackMsg').value.trim();
+
+    if (!rating) return alert("Please provide a star rating!");
+    if (!message) return alert("Please enter your feedback message!");
+
+    try {
+        const res = await fetch(`${API_URL}/user/send-feedback`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ rating: parseInt(rating), message })
+        });
+        
+        const result = await res.json();
+
+        if (result.status === 'success') {
+            this.showModal("Thank You!", "Your feedback has been submitted successfully.", "success");
+        } else {
+            if(res.status === 401) {
+                alert("Session expired. Please login again.");
+                this.openAuthModal('login');
+            } else {
+                alert("Error: " + result.message);
+            }
+        }
+    } catch (err) {
+        console.error("Feedback error", err);
+    }
+}
 }
 window.app = new BoqkitApp();
 console.log("⚡ Boqkit Optimized App Loaded");
@@ -2448,8 +2528,7 @@ console.log("⚡ Boqkit Optimized App Loaded");
             <div class="flex flex-col gap-3">
                 <h3 class="font-bold text-amber-400 uppercase text-xs tracking-widest mb-2">Company</h3>
                 <a href="javascript:void(0)" onclick="app.showModal('About Us', 'BoqKit is an event discovery platform that helps users find events in one place. We list events across categories such as concerts, sports, festivals, theatre, and live experiences.')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">About Us</a>
-                <a href="javascript:void(0)" onclick="app.showModal('Contact Us', 'Email: boqkit.123@gmail.com\nSupport: 24/7 via email.\nOffice: London, United Kingdom')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">Contact Us</a>
-                <a href="javascript:void(0)" onclick="app.showModal('FAQ', '<div class=\'h-[400px] w-full\'><iframe src=\'https://faq.boqkit.com\' class=\'w-full h-full border-0\'></iframe></div>')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">FAQ</a>
+<a href="javascript:void(0)" onclick="app.showModal('Contact Us', 'Email: boqkit.123@gmail.com<br>Support: 24/7 via email.<br>Office: London, United Kingdom')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">Contact Us</a>                <a href="javascript:void(0)" onclick="app.showModal('FAQ', '<div class=\'h-[400px] w-full\'><iframe src=\'https://faq.boqkit.com\' class=\'w-full h-full border-0\'></iframe></div>')" class="text-sm text-emerald-100 hover:text-amber-400 transition-colors">FAQ</a>
             </div>
 
             <div class="flex flex-col gap-3">
@@ -2461,12 +2540,17 @@ console.log("⚡ Boqkit Optimized App Loaded");
             </div>
 
             <div class="flex flex-col gap-3">
-                <h3 class="font-bold text-amber-400 uppercase text-xs tracking-widest mb-2">Support</h3>
-                <p class="text-xs text-emerald-300">Need help with a booking?</p>
-                <a href="mailto:boqkit.123@gmail.com" class="bg-emerald-800 hover:bg-emerald-700 text-white text-center py-2 rounded-lg text-xs font-bold transition-all">
-                    Email Support
-                </a>
-            </div>
+    <h3 class="font-bold text-amber-400 uppercase text-xs tracking-widest mb-2">Support</h3>
+    <p class="text-xs text-emerald-300">Need help with a booking?</p>
+    
+    <a href="mailto:boqkit.123@gmail.com" class="bg-emerald-800 hover:bg-emerald-700 text-white text-center py-2 rounded-lg text-xs font-bold transition-all">
+        Support
+    </a>
+
+    <button onclick="app.showFeedbackForm()" class="bg-emerald-800 hover:bg-emerald-700 text-white text-center py-2 rounded-lg text-xs font-bold transition-all">
+        Share Feedback
+    </button>
+</div>
         </div>
 
         <div class="border-t border-emerald-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
